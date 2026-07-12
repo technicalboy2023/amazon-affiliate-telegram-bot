@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from config.settings import Settings
     from services.channel_monitor import ChannelMonitor
     from services.cleanup.service import CleanupService
+    from services.duplicate_checker import DuplicateChecker
     from services.link_engine.engine import LinkEngine
     from services.message_processor import MessageProcessor
     from services.message_publisher import MessagePublisher
@@ -52,6 +53,7 @@ class Container:
     channel_monitor: ChannelMonitor = field(default=None)
     message_processor: MessageProcessor = field(default=None)
     message_publisher: MessagePublisher = field(default=None)
+    duplicate_checker: DuplicateChecker = field(default=None)
     user_service: UserService = field(default=None)
     stats_service: StatsService = field(default=None)
     cleanup_service: CleanupService = field(default=None)

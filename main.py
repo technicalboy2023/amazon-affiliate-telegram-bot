@@ -20,6 +20,7 @@ from core.container import Container, set_container
 from database.engine import create_engine, create_session_factory, init_db
 from services.channel_monitor import ChannelMonitor
 from services.cleanup.service import CleanupService
+from services.duplicate_checker import DuplicateChecker
 from services.link_engine.engine import LinkEngine
 from services.link_engine.extractor import UrlExtractor
 from services.link_engine.providers.amazon import AmazonProvider
@@ -113,6 +114,10 @@ async def init_container() -> None:
         user_id=admin_user.id,
         affiliate_tag=settings.default_affiliate_tag,
     )
+    container.duplicate_checker = DuplicateChecker(
+        session_factory,
+        window_hours=settings.duplicate_window_hours,
+    )
     container.settings_service = SettingsService(session_factory)
     container.stats_service = StatsService(session_factory)
     container.cleanup_service = CleanupService(session_factory)
@@ -184,6 +189,7 @@ async def init_container() -> None:
 
         container.message_publisher = MessagePublisher(
             userbot=client,
+            duplicate_checker=container.duplicate_checker,
             session_factory=session_factory,
         )
 
@@ -215,6 +221,7 @@ async def cleanup_loop() -> None:
                 user_id=settings.default_user_id,
                 stats_age_days=settings.stats_retention_days,
                 log_retention_days=settings.log_retention_days,
+                duplicate_days=settings.duplicate_cache_days,
             )
         except asyncio.CancelledError:
             break
@@ -243,6 +250,7 @@ async def _run_cleanup_if_due() -> None:
             user_id=uid,
             stats_age_days=container.settings.stats_retention_days,
             log_retention_days=container.settings.log_retention_days,
+            duplicate_days=container.settings.duplicate_cache_days,
         )
 
 

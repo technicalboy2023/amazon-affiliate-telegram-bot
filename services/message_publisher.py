@@ -6,13 +6,15 @@ from telethon import TelegramClient
 
 from database.models.message import ProcessedMessage
 from database.repositories.message_repo import MessageRepository
+from services.duplicate_checker import DuplicateChecker
 
 logger = logging.getLogger(__name__)
 
 
 class MessagePublisher:
-    def __init__(self, userbot: TelegramClient, session_factory: async_sessionmaker):
+    def __init__(self, userbot: TelegramClient, duplicate_checker: DuplicateChecker, session_factory: async_sessionmaker):
         self.userbot = userbot
+        self.duplicate_checker = duplicate_checker
         self.session_factory = session_factory
 
     async def is_already_processed(self, source_channel_id: int, source_message_id: int) -> bool:
@@ -25,6 +27,11 @@ class MessagePublisher:
             return result.scalar_one_or_none() is not None
 
     async def publish(self, *, source_channel_id: int, source_message_id: int, dest_channel: int | str, text: str, original_text: str, asins: list[str], links_replaced: int, user_id: int, pipeline_id: int, had_media: bool = False, media_type: str | None = None, media_obj: object | None = None) -> int | None:
+        if links_replaced > 0:
+            for asin in asins:
+                if await self.duplicate_checker.is_duplicate(asin, pipeline_id):
+                    logger.info("Skipping duplicate ASIN: %s", asin)
+                    return None
         try:
             entity = await self.userbot.get_entity(dest_channel)
             if had_media and media_obj is not None:
@@ -72,6 +79,9 @@ class MessagePublisher:
                 status="success",
             )
             await session.commit()
+
+        for asin in asins:
+            await self.duplicate_checker.mark_seen(asin, pipeline_id, source_channel_id, source_message_id, user_id=user_id)
 
         logger.info("Published msg %d->%d to %s (asins=%s)", source_message_id, dest_message_id, dest_channel, asins)
         return dest_message_id
