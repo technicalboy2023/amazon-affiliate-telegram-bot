@@ -18,7 +18,6 @@ from aiogram.types import BotCommand, Message
 from config.settings import get_settings, validate_runtime_settings
 from core.container import Container, set_container
 from database.engine import create_engine, create_session_factory, init_db
-from services.channel_monitor import ChannelMonitor
 from services.duplicate_checker import DuplicateChecker
 from services.link_engine.engine import LinkEngine
 from services.link_engine.extractor import UrlExtractor
@@ -66,8 +65,8 @@ from telegram.bot.handlers.start import (
     cmd_stop,
 )
 from telegram.userbot.client import UserbotClient
+from telegram.userbot.handlers.monitor import ChannelMonitor
 from utils.logging import setup_logging
-from utils.rate_limiter import RateLimiter
 
 logger = logging.getLogger("main")
 
@@ -99,9 +98,6 @@ async def init_container() -> None:
         resolver=resolver,
     )
     container.link_engine = link_engine
-
-    container.bot_rate_limiter = RateLimiter(max_calls=settings.bot_rate_limit, period=60)
-    container.resolver_rate_limiter = RateLimiter(max_calls=settings.resolver_rate_limit, period=60)
 
     container.user_service = UserService(session_factory)
     admin_user = await container.user_service.ensure_admin(

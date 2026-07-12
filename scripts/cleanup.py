@@ -3,47 +3,25 @@
 
 Cleans old rows from high-volume tables while preserving all user config,
 Telegram login sessions, pipelines, and settings.
-
-Safe to run while the bot is active (SQLite WAL mode handles concurrency).
 """
 
 import logging
-import sqlite3
-from datetime import UTC, date, datetime, timedelta
+import os
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
+
 BASE_DIR = Path(__file__).resolve().parent.parent
-DB_PATH = BASE_DIR / "data" / "affiliate.db"
 LOG_DIR = BASE_DIR / "data" / "logs"
 LOG_FILE = LOG_DIR / "cleanup.log"
 RETENTION_DAYS = 7
 
 CLEANABLE = [
-    {
-        "table": "processed_messages",
-        "column": "processed_at",
-        "label": "forwards",
-    },
-    {
-        "table": "duplicate_cache",
-        "column": "first_seen_at",
-        "label": "duplicate cache",
-    },
-    {
-        "table": "daily_stats",
-        "column": "date",
-        "label": "daily stats",
-    },
-]
-
-SAFE_TABLES = [
-    "users",
-    "telegram_accounts",
-    "automation_pipelines",
-    "source_channels",
-    "dest_channels",
-    "affiliate_tags",
-    "app_settings",
+    {"table": "processed_messages", "column": "processed_at", "label": "forwards"},
+    {"table": "duplicate_cache", "column": "first_seen_at", "label": "duplicate cache"},
+    {"table": "daily_stats", "column": "date", "label": "daily stats"},
 ]
 
 
@@ -52,73 +30,48 @@ def setup_logging() -> None:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s | %(levelname)-8s | %(message)s",
-        handlers=[
-            logging.FileHandler(LOG_FILE),
-            logging.StreamHandler(),
-        ],
+        handlers=[logging.FileHandler(LOG_FILE), logging.StreamHandler()],
     )
 
 
-def verify_db() -> bool:
-    if not DB_PATH.exists():
-        logging.error("Database not found: %s", DB_PATH)
-        return False
-    return True
+def get_database_url() -> str | None:
+    load_dotenv(BASE_DIR / ".env")
+    url = os.getenv("DATABASE_URL")
+    if url:
+        return url
+    logging.error("DATABASE_URL not found in .env")
+    return None
 
 
-def verify_tables(cursor: sqlite3.Cursor) -> bool:
-    cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-    existing = {row[0] for row in cursor.fetchall()}
-    missing = [t["table"] for t in CLEANABLE if t["table"] not in existing]
-    if missing:
-        logging.warning("Tables not found (first run?): %s", missing)
-    for table in SAFE_TABLES:
-        if table not in existing:
-            logging.warning("Expected table missing: %s", table)
-    return True
-
-
-def drop_orphan_tables(cur: sqlite3.Cursor) -> None:
-    """Drop tables that no longer have a model (leftover from refactors)."""
-    cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
-    existing = {row[0] for row in cur.fetchall()}
-    orphan = {"cleanup_history"}
-    for name in orphan & existing:
-        cur.execute(f"DROP TABLE IF EXISTS {name}")
-        logging.info("Dropped orphan table: %s", name)
-
-
-def clean() -> dict[str, int]:
+def clean(url: str) -> dict[str, int]:
     cutoff_dt = datetime.now(UTC) - timedelta(days=RETENTION_DAYS)
-    cutoff_date = cutoff_dt.date().isoformat()
-    cutoff_iso = cutoff_dt.isoformat()
-
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=5000")
-    cur = conn.cursor()
-
+    cutoff_str = cutoff_dt.isoformat()
+    engine = create_engine(url)
     results: dict[str, int] = {}
-    drop_orphan_tables(cur)
 
-    try:
+    with engine.begin() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS cleanup_history"))
+
+        existing = {
+            row[0]
+            for row in conn.execute(
+                text("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
+            )
+        }
+
         for tbl in CLEANABLE:
             table = tbl["table"]
+            if table not in existing:
+                logging.warning("Table not found (first run?): %s", table)
+                continue
             column = tbl["column"]
-            cutoff = cutoff_date if column == "date" else cutoff_iso
+            cutoff = cutoff_str[:10] if column == "date" else cutoff_str
             op = "<=" if column == "date" else "<"
-            cur.execute(f"DELETE FROM {table} WHERE {column} {op} ?", (cutoff,))
-            deleted = cur.rowcount
-            results[tbl["label"]] = deleted
-            logging.info("Cleaned %s: %d rows deleted (cutoff=%s)", tbl["label"], deleted, cutoff)
+            result = conn.execute(text(f"DELETE FROM {table} WHERE {column} {op} :cutoff"), {"cutoff": cutoff})
+            results[tbl["label"]] = result.rowcount
+            logging.info("Cleaned %s: %d rows deleted", tbl["label"], result.rowcount)
 
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
-
+    engine.dispose()
     return results
 
 
@@ -127,19 +80,15 @@ def main() -> None:
     logging.info("=" * 50)
     logging.info("Cleanup started (retention=%d days)", RETENTION_DAYS)
 
-    if not verify_db():
+    url = get_database_url()
+    if not url:
         return
 
     try:
-        conn = sqlite3.connect(str(DB_PATH))
-        verify_tables(conn.cursor())
-        conn.close()
-    except sqlite3.Error as e:
-        logging.error("DB connection failed: %s", e)
-        return
-
-    results = clean()
-    logging.info("Cleanup complete: %s", results)
+        results = clean(url)
+        logging.info("Cleanup complete: %s", results)
+    except Exception as e:
+        logging.error("Cleanup failed: %s", e)
     logging.info("=" * 50)
 
 

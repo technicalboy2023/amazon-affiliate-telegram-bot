@@ -1,7 +1,8 @@
 import logging
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select, update as sql_update
+from sqlalchemy import select
+from sqlalchemy import update as sql_update
 from sqlalchemy.exc import IntegrityError
 
 from database.models.duplicate import DuplicateCache
@@ -40,11 +41,9 @@ class DuplicateChecker:
                 await session.commit()
             except IntegrityError:
                 await session.rollback()
-                # Row exists but window expired — reset timer so future duplicates can be caught
-                async with self.session_factory() as s:
-                    await s.execute(
-                        sql_update(DuplicateCache)
-                        .where(DuplicateCache.pipeline_id == pipeline_id, DuplicateCache.asin == asin)
-                        .values(first_seen_at=datetime.now(UTC))
-                    )
-                    await s.commit()
+                await session.execute(
+                    sql_update(DuplicateCache)
+                    .where(DuplicateCache.pipeline_id == pipeline_id, DuplicateCache.asin == asin)
+                    .values(first_seen_at=datetime.now(UTC))
+                )
+                await session.commit()

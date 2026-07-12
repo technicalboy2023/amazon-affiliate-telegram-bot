@@ -96,7 +96,7 @@ async def _finalize_login(
     message: types.Message, client: TelegramClient, me,
 ) -> None:
     global _login_client
-    raw_session = client.session.save() if hasattr(client, "session") else StringSession.save(client.session)
+    raw_session = client.session.save()
     encrypted = encrypt(raw_session)
 
     container = get_container()
@@ -125,14 +125,14 @@ async def _finalize_login(
     if container.channel_monitor:
         await container.channel_monitor.stop()
     if container.message_publisher:
-        pass
+        logger.info("Previous message publisher will be replaced")
 
     container.userbot = client
     container.userbot_client._client = client
     container.userbot_client._running = True
 
-    from services.channel_monitor import ChannelMonitor
     from services.message_publisher import MessagePublisher
+    from telegram.userbot.handlers.monitor import ChannelMonitor
     container.message_publisher = MessagePublisher(
         userbot=client,
         duplicate_checker=container.duplicate_checker,

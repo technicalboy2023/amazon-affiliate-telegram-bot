@@ -194,7 +194,6 @@ async def cmd_domain(message: types.Message) -> None:
         await message.answer("Domain cannot be empty.")
         return
     await container.settings_service.set("amazon_domain", domain)
-    container.settings.default_amazon_domain = domain
     await message.answer(f"Amazon domain set to: {domain}")
 
 

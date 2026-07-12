@@ -88,8 +88,8 @@ class Settings(BaseSettings):
     dest_channel_id: int | None = None
     dest_channel_username: str | None = None
 
-    # --- Database ---
-    database_url: str = f"sqlite+aiosqlite:///{BASE_DIR / 'data' / 'affiliate.db'}"
+    # --- Database (set DATABASE_URL in .env for PostgreSQL) ---
+    database_url: str = ""
 
     # --- System Defaults (single-user personal bot) ---
     default_user_id: int = 1
@@ -98,10 +98,6 @@ class Settings(BaseSettings):
 
     # --- Duplicate Detection ---
     duplicate_window_hours: int = 1  # 1 hour — same ASIN re-posted after 1h is allowed
-
-    # --- Rate Limiting ---
-    bot_rate_limit: int = 20
-    resolver_rate_limit: int = 30
 
     # --- Logging ---
     log_level: str = "INFO"
@@ -151,6 +147,7 @@ def validate_runtime_settings(settings: Settings | None = None) -> Settings:
         "ADMIN_TELEGRAM_ID": settings.admin_telegram_id,
         "TELEGRAM_API_ID": settings.telegram_api_id,
         "TELEGRAM_API_HASH": settings.telegram_api_hash,
+        "DATABASE_URL": settings.database_url,
     }
     placeholders = {
         "your_bot_token_here",
