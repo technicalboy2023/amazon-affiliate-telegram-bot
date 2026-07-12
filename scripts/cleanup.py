@@ -34,6 +34,10 @@ def setup_logging() -> None:
     )
 
 
+def _fix_url(url: str) -> str:
+    return url.replace("+asyncpg", "")
+
+
 def get_database_url() -> str | None:
     load_dotenv(BASE_DIR / ".env")
     url = os.getenv("DATABASE_URL")
@@ -85,7 +89,7 @@ def main() -> None:
         return
 
     try:
-        results = clean(url)
+        results = clean(_fix_url(url))
         logging.info("Cleanup complete: %s", results)
     except Exception as e:
         logging.error("Cleanup failed: %s", e)
