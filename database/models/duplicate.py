@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, UniqueConstraint, func
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database.models.base import Base
@@ -27,7 +27,7 @@ class DuplicateCache(Base):
         index=True,
     )
     asin: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
-    source_channel_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    source_channel_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
     source_message_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     first_seen_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

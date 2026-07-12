@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.models.base import Base, TimestampMixin
@@ -19,7 +19,7 @@ class TelegramAccount(Base, TimestampMixin):
     user_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    telegram_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    telegram_user_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
     phone_number_encrypted: Mapped[str | None] = mapped_column(String(500), nullable=True)
     session_string_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
     api_id_encrypted: Mapped[str | None] = mapped_column(String(500), nullable=True)

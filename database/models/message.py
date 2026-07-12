@@ -7,6 +7,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     DateTime,
     ForeignKey,
@@ -35,9 +36,9 @@ class ProcessedMessage(Base):
         nullable=False,
         index=True,
     )
-    source_channel_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    source_channel_id: Mapped[int] = mapped_column(BigInteger, nullable=False, index=True)
     source_message_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    dest_channel_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    dest_channel_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     dest_message_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     original_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     modified_text: Mapped[str | None] = mapped_column(Text, nullable=True)
