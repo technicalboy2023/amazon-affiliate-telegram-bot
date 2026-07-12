@@ -191,7 +191,7 @@ async def cmd_cleanup(message: types.Message) -> None:
         await container.cleanup_service.cleanup(
             user_id=1,
             stats_age_days=container.settings.stats_retention_days,
-            keep_error_days=container.settings.message_retention_days,
+            log_retention_days=container.settings.log_retention_days,
             duplicate_days=container.settings.duplicate_cache_days,
         )
         await message.answer("Cleanup complete.")

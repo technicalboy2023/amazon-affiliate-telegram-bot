@@ -215,13 +215,35 @@ async def cleanup_loop() -> None:
             await container.cleanup_service.cleanup(
                 user_id=1,
                 stats_age_days=settings.stats_retention_days,
-                keep_error_days=settings.message_retention_days,
+                log_retention_days=settings.log_retention_days,
                 duplicate_days=settings.duplicate_cache_days,
             )
         except asyncio.CancelledError:
             break
         except Exception as e:
             logger.error("Cleanup error: %s", e)
+
+
+async def _run_cleanup_if_due() -> None:
+    from sqlalchemy import func, select
+    from database.models.stats import CleanupHistory
+    from datetime import UTC, datetime, timedelta
+    interval_hours = container.settings.cleanup_interval_hours
+    cutoff = datetime.now(UTC) - timedelta(hours=interval_hours)
+    async with container.session_factory() as session:
+        stmt = select(sa_func.max(CleanupHistory.started_at)).where(
+            CleanupHistory.user_id == 1,
+        )
+        result = await session.execute(stmt)
+        last_cleanup = result.scalar()
+    if last_cleanup is None or last_cleanup.replace(tzinfo=UTC) < cutoff:
+        logger.info("Startup: cleanup overdue, running now")
+        await container.cleanup_service.cleanup(
+            user_id=1,
+            stats_age_days=container.settings.stats_retention_days,
+            log_retention_days=container.settings.log_retention_days,
+            duplicate_days=container.settings.duplicate_cache_days,
+        )
 
 
 async def main() -> None:
@@ -272,6 +294,7 @@ async def main() -> None:
     ])
 
     global _cleanup_task
+    await _run_cleanup_if_due()
     _cleanup_task = asyncio.create_task(cleanup_loop())
 
     stop_event = asyncio.Event()

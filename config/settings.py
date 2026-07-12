@@ -91,12 +91,12 @@ class Settings(BaseSettings):
     # --- Database ---
     database_url: str = f"sqlite+aiosqlite:///{BASE_DIR / 'data' / 'affiliate.db'}"
 
-    # --- Cleanup ---
+    # --- Cleanup (every 7 days) ---
     cleanup_enabled: bool = True
-    cleanup_interval_hours: int = 24
-    stats_retention_days: int = 7
-    message_retention_days: int = 30
-    duplicate_cache_days: int = 30
+    cleanup_interval_hours: int = 168  # 7 days
+    stats_retention_days: int = 30
+    log_retention_days: int = 7       # delete processed msg logs after 7 days
+    duplicate_cache_days: int = 14    # keep duplicate tracking for 14 days
 
     # --- Duplicate Detection ---
     duplicate_window_hours: int = 720  # 30 days
