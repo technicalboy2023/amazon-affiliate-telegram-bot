@@ -231,7 +231,7 @@ async def _run_cleanup_if_due() -> None:
     interval_hours = container.settings.cleanup_interval_hours
     cutoff = datetime.now(UTC) - timedelta(hours=interval_hours)
     async with container.session_factory() as session:
-        stmt = select(sa_func.max(CleanupHistory.started_at)).where(
+        stmt = select(func.max(CleanupHistory.started_at)).where(
             CleanupHistory.user_id == 1,
         )
         result = await session.execute(stmt)
