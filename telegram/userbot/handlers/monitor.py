@@ -3,7 +3,7 @@ import logging
 
 from telethon import TelegramClient
 from telethon.events import NewMessage
-from telethon.tl.types import MessageMediaPhoto, MessageMediaDocument, MessageMediaWebPage
+from telethon.tl.types import MessageMediaDocument, MessageMediaPhoto, MessageMediaWebPage
 
 from config.settings import Settings
 from services.post_customizer import PostCustomizer
@@ -95,9 +95,8 @@ class ChannelMonitor:
             has_media, media_type, media_obj = _detect_media(event)
 
             text = event.message.text or event.message.message or ""
-            if not text:
-                if not has_media:
-                    return
+            if not text and not has_media:
+                return
 
             text = await self.customizer.customize(text)
             if text is None:

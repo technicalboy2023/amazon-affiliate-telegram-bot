@@ -2,7 +2,6 @@ import logging
 
 from sqlalchemy import select
 
-from database.models.affiliate import AffiliateTag
 from database.models.pipeline import AutomationPipeline
 from database.models.user import User
 
