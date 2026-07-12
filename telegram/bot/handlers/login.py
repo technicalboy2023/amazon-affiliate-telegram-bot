@@ -31,6 +31,8 @@ def _get_login_client() -> TelegramClient:
             system_version="Android 14",
             app_version="1.0.0",
             lang_code="en",
+            connection_retries=5,
+            retry_delay=3,
         )
     return _login_client
 
@@ -128,8 +130,7 @@ async def _finalize_login(
         logger.info("Previous message publisher will be replaced")
 
     container.userbot = client
-    container.userbot_client._client = client
-    container.userbot_client._running = True
+    await container.userbot_client.replace_client(client)
 
     from services.message_publisher import MessagePublisher
     from telegram.userbot.handlers.monitor import ChannelMonitor

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 from telethon import TelegramClient
@@ -8,12 +9,19 @@ from utils.encryption import decrypt
 
 logger = logging.getLogger(__name__)
 
+KEEPALIVE_INTERVAL = 30
+
 
 class UserbotClient:
     def __init__(self, settings: Settings):
         self.settings = settings
         self._client: TelegramClient | None = None
         self._running = False
+        self._watchdog_task: asyncio.Task | None = None
+        self._on_reconnect_callback = None
+
+    def set_on_reconnect(self, callback):
+        self._on_reconnect_callback = callback
 
     @property
     def client(self) -> TelegramClient | None:
@@ -24,6 +32,24 @@ class UserbotClient:
             await self._client.disconnect()
             logger.info("Disconnected previous userbot client")
         session_string = await self._load_session()
+        self._make_client(session_string)
+        await self._client.connect()
+        if session_string:
+            if not await self._client.is_user_authorized():
+                logger.warning("Saved session is invalid")
+                self._make_client(None)
+                await self._client.connect()
+                self._running = False
+                return self._client
+            self._running = True
+            me = await self._client.get_me()
+            logger.info("Userbot connected as @%s", me.username)
+            self._start_watchdog()
+        else:
+            logger.info("No saved session. Use /login to authenticate")
+        return self._client
+
+    def _make_client(self, session_string: str | None) -> None:
         self._client = TelegramClient(
             StringSession(session_string) if session_string else StringSession(),
             self.settings.telegram_api_id,
@@ -31,28 +57,18 @@ class UserbotClient:
             connection_retries=5,
             retry_delay=3,
         )
-        await self._client.connect()
-        if session_string:
-            if not await self._client.is_user_authorized():
-                logger.warning("Saved session is invalid")
-                self._client = TelegramClient(
-                    StringSession(),
-                    self.settings.telegram_api_id,
-                    self.settings.telegram_api_hash,
-                    connection_retries=5,
-                    retry_delay=3,
-                )
-                await self._client.connect()
-                return self._client
-            self._running = True
-            me = await self._client.get_me()
-            logger.info("Userbot connected as @%s", me.username)
-        else:
-            logger.info("No saved session. Use /login to authenticate")
-        return self._client
+
+    async def replace_client(self, client: TelegramClient) -> None:
+        self._stop_watchdog()
+        if self._client and self._client.is_connected():
+            await self._client.disconnect()
+        self._client = client
+        self._running = True
+        self._start_watchdog()
 
     async def stop(self) -> None:
         self._running = False
+        self._stop_watchdog()
         if self._client and self._client.is_connected():
             await self._client.disconnect()
             logger.info("Userbot disconnected")
@@ -92,3 +108,32 @@ class UserbotClient:
         if self._client and self._client.is_connected():
             return self._client
         return await self.start()
+
+    def _start_watchdog(self) -> None:
+        self._stop_watchdog()
+        self._watchdog_task = asyncio.create_task(self._connection_watchdog())
+
+    def _stop_watchdog(self) -> None:
+        if self._watchdog_task is not None:
+            self._watchdog_task.cancel()
+            self._watchdog_task = None
+
+    async def _connection_watchdog(self) -> None:
+        while self._running:
+            try:
+                await asyncio.sleep(KEEPALIVE_INTERVAL)
+                if not self._running:
+                    break
+                if self._client and not self._client.is_connected():
+                    logger.warning("Userbot disconnected. Reconnecting...")
+                    await self._client.connect()
+                    me = await self._client.get_me()
+                    logger.info("Userbot reconnected as @%s", me.username)
+                    if self._on_reconnect_callback:
+                        await self._on_reconnect_callback()
+                elif self._client:
+                    await self._client.get_me()
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error("Connection watchdog error: %s", e)

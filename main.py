@@ -174,6 +174,12 @@ async def init_container() -> None:
     userbot_client = UserbotClient(settings)
     container.userbot_client = userbot_client
 
+    async def _on_userbot_reconnect() -> None:
+        if container.channel_monitor:
+            await container.channel_monitor.restart()
+
+    userbot_client.set_on_reconnect(_on_userbot_reconnect)
+
     try:
         client = await userbot_client.start()
         container.userbot = client
