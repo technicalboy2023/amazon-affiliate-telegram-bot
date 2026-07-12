@@ -225,9 +225,11 @@ async def cleanup_loop() -> None:
 
 
 async def _run_cleanup_if_due() -> None:
-    from sqlalchemy import func, select
-    from database.models.stats import CleanupHistory
     from datetime import UTC, datetime, timedelta
+
+    from sqlalchemy import func, select
+
+    from database.models.stats import CleanupHistory
     interval_hours = container.settings.cleanup_interval_hours
     cutoff = datetime.now(UTC) - timedelta(hours=interval_hours)
     async with container.session_factory() as session:
