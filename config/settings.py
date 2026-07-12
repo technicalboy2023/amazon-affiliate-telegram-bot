@@ -96,7 +96,7 @@ class Settings(BaseSettings):
     cleanup_interval_hours: int = 168  # 7 days
     stats_retention_days: int = 30
     log_retention_days: int = 7       # delete processed msg logs after 7 days
-    duplicate_cache_days: int = 14    # keep duplicate tracking for 14 days
+    duplicate_cache_days: int = 31    # must be >= duplicate_window_hours/24 (30d)
 
     # --- System Defaults (single-user personal bot) ---
     default_user_id: int = 1
