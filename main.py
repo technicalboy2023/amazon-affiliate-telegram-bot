@@ -122,7 +122,12 @@ async def init_container() -> None:
     container.stats_service = StatsService(session_factory)
     container.cleanup_service = CleanupService(session_factory)
 
-    container.message_processor = MessageProcessor(link_engine)
+    container.message_processor = MessageProcessor(
+        link_engine,
+        user_id=settings.default_user_id,
+        pipeline_id=settings.default_pipeline_id,
+        telegram_account_id=settings.default_telegram_account_id,
+    )
 
     bot = Bot(token=settings.bot_token)
     dp = Dispatcher(storage=MemoryStorage())
@@ -213,7 +218,7 @@ async def cleanup_loop() -> None:
         try:
             await asyncio.sleep(settings.cleanup_interval_hours * 3600)
             await container.cleanup_service.cleanup(
-                user_id=1,
+                user_id=settings.default_user_id,
                 stats_age_days=settings.stats_retention_days,
                 log_retention_days=settings.log_retention_days,
                 duplicate_days=settings.duplicate_cache_days,
@@ -230,18 +235,19 @@ async def _run_cleanup_if_due() -> None:
     from sqlalchemy import func, select
 
     from database.models.stats import CleanupHistory
+    uid = container.settings.default_user_id
     interval_hours = container.settings.cleanup_interval_hours
     cutoff = datetime.now(UTC) - timedelta(hours=interval_hours)
     async with container.session_factory() as session:
         stmt = select(func.max(CleanupHistory.started_at)).where(
-            CleanupHistory.user_id == 1,
+            CleanupHistory.user_id == uid,
         )
         result = await session.execute(stmt)
         last_cleanup = result.scalar()
     if last_cleanup is None or last_cleanup.replace(tzinfo=UTC) < cutoff:
         logger.info("Startup: cleanup overdue, running now")
         await container.cleanup_service.cleanup(
-            user_id=1,
+            user_id=uid,
             stats_age_days=container.settings.stats_retention_days,
             log_retention_days=container.settings.log_retention_days,
             duplicate_days=container.settings.duplicate_cache_days,

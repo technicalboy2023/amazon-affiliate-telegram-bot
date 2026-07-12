@@ -24,12 +24,14 @@ class DuplicateChecker:
             result = await session.execute(stmt)
             return result.scalar_one_or_none() is not None
 
-    async def mark_seen(self, asin: str, pipeline_id: int, source_channel_id: int, source_message_id: int | None = None) -> None:
+    async def mark_seen(self, asin: str, pipeline_id: int, source_channel_id: int, source_message_id: int | None = None, user_id: int | None = None) -> None:
+        from config.settings import get_settings
+        uid = user_id if user_id is not None else get_settings().default_user_id
         async with self.session_factory() as session:
             exists = await self.is_duplicate(asin, pipeline_id)
             if not exists:
                 session.add(DuplicateCache(
-                    user_id=1,
+                    user_id=uid,
                     pipeline_id=pipeline_id,
                     asin=asin,
                     source_channel_id=source_channel_id,

@@ -1,5 +1,6 @@
 import logging
 
+from config.settings import get_settings
 from services.link_engine.engine import LinkEngine
 from services.link_engine.models import AffiliateCredentials, PipelineContext
 
@@ -7,17 +8,21 @@ logger = logging.getLogger(__name__)
 
 
 class MessageProcessor:
-    def __init__(self, link_engine: LinkEngine):
+    def __init__(self, link_engine: LinkEngine, user_id: int | None = None, pipeline_id: int | None = None, telegram_account_id: int | None = None):
         self.link_engine = link_engine
+        _s = get_settings()
+        self._user_id = user_id if user_id is not None else _s.default_user_id
+        self._pipeline_id = pipeline_id if pipeline_id is not None else _s.default_pipeline_id
+        self._telegram_account_id = telegram_account_id if telegram_account_id is not None else _s.default_telegram_account_id
 
     async def process(self, text: str | None, affiliate_tag: str = "", amazon_domain: str = "amazon.in") -> tuple[str | None, list[str], int]:
         if not text:
             return text, [], 0
 
         context = PipelineContext(
-            user_id=1,
-            pipeline_id=1,
-            telegram_account_id=1,
+            user_id=self._user_id,
+            pipeline_id=self._pipeline_id,
+            telegram_account_id=self._telegram_account_id,
             provider="amazon",
             country="IN",
             duplicate_policy="allow",

@@ -143,8 +143,8 @@ class ChannelMonitor:
                 original_text=text,
                 asins=asins,
                 links_replaced=replaced,
-                user_id=1,
-                pipeline_id=1,
+                user_id=self.settings.default_user_id,
+                pipeline_id=self.settings.default_pipeline_id,
                 had_media=has_media,
                 media_type=media_type,
                 media_obj=media_obj,
@@ -152,7 +152,7 @@ class ChannelMonitor:
 
             if published_id is not None:
                 self._last_forward_time = asyncio.get_event_loop().time()
-                await self.stats_service.record_publish(user_id=1, pipeline_id=1)
+                await self.stats_service.record_publish(user_id=self.settings.default_user_id, pipeline_id=self.settings.default_pipeline_id)
 
         except Exception as e:
             logger.error("Message processing error: %s", e, exc_info=True)

@@ -71,8 +71,8 @@ class Settings(BaseSettings):
     bot_token: str = ""
 
     # --- Telegram Userbot (Telethon) ---
-    telegram_api_id: int = 24834557
-    telegram_api_hash: str = "00753a06721686df9d2896be1fd01152"
+    telegram_api_id: int = Field(default=0, alias="TELEGRAM_API_ID")
+    telegram_api_hash: str = Field(default="", alias="TELEGRAM_API_HASH")
 
     # --- Admin ---
     admin_telegram_id: int = 0
@@ -97,6 +97,11 @@ class Settings(BaseSettings):
     stats_retention_days: int = 30
     log_retention_days: int = 7       # delete processed msg logs after 7 days
     duplicate_cache_days: int = 14    # keep duplicate tracking for 14 days
+
+    # --- System Defaults (single-user personal bot) ---
+    default_user_id: int = 1
+    default_pipeline_id: int = 1
+    default_telegram_account_id: int = 1
 
     # --- Duplicate Detection ---
     duplicate_window_hours: int = 720  # 30 days
@@ -151,6 +156,8 @@ def validate_runtime_settings(settings: Settings | None = None) -> Settings:
     required = {
         "BOT_TOKEN": settings.bot_token,
         "ADMIN_TELEGRAM_ID": settings.admin_telegram_id,
+        "TELEGRAM_API_ID": settings.telegram_api_id,
+        "TELEGRAM_API_HASH": settings.telegram_api_hash,
     }
     placeholders = {
         "your_bot_token_here",

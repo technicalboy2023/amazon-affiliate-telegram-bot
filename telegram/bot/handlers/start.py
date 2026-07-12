@@ -100,7 +100,7 @@ async def cmd_status(message: types.Message) -> None:
 
 async def cmd_stats(message: types.Message) -> None:
     container = get_container()
-    stats = await container.stats_service.get_today_stats(user_id=1)
+    stats = await container.stats_service.get_today_stats(user_id=container.settings.default_user_id)
     await message.answer(
         "📊 Today's Statistics:\n"
         f"Processed: {stats.get('processed', 0)}\n"
@@ -113,7 +113,7 @@ async def cmd_history(message: types.Message) -> None:
     container = get_container()
     async with container.session_factory() as session:
         repo = MessageRepository(session)
-        msgs = await repo.get_recent(user_id=1, limit=10)
+        msgs = await repo.get_recent(user_id=container.settings.default_user_id, limit=10)
     if not msgs:
         await message.answer("No forwarded messages yet.")
         return
@@ -130,7 +130,7 @@ async def cmd_errors(message: types.Message) -> None:
     container = get_container()
     async with container.session_factory() as session:
         repo = MessageRepository(session)
-        msgs = await repo.get_error_messages(user_id=1, limit=10)
+        msgs = await repo.get_error_messages(user_id=container.settings.default_user_id, limit=10)
     if not msgs:
         await message.answer("No errors recorded.")
         return
@@ -189,7 +189,7 @@ async def cmd_cleanup(message: types.Message) -> None:
     await message.answer("Running cleanup...")
     try:
         await container.cleanup_service.cleanup(
-            user_id=1,
+            user_id=container.settings.default_user_id,
             stats_age_days=container.settings.stats_retention_days,
             log_retention_days=container.settings.log_retention_days,
             duplicate_days=container.settings.duplicate_cache_days,

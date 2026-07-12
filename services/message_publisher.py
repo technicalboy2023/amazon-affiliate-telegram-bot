@@ -81,7 +81,7 @@ class MessagePublisher:
             await session.commit()
 
         for asin in asins:
-            await self.duplicate_checker.mark_seen(asin, pipeline_id, source_channel_id, source_message_id)
+            await self.duplicate_checker.mark_seen(asin, pipeline_id, source_channel_id, source_message_id, user_id=user_id)
 
         logger.info("Published msg %d->%d to %s (asins=%s)", source_message_id, dest_message_id, dest_channel, asins)
         return dest_message_id

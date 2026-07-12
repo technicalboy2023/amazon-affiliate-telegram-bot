@@ -55,8 +55,8 @@ def test_runtime_validation_reports_clear_missing_values(tmp_path: Path) -> None
     assert "ADMIN_TELEGRAM_ID" in message
     assert "DEFAULT_AFFILIATE_TAG" not in message
     assert "FERNET_KEY" not in message
-    assert "TELEGRAM_API_ID" not in message
-    assert "TELEGRAM_API_HASH" not in message
+    assert "TELEGRAM_API_ID" in message
+    assert "TELEGRAM_API_HASH" in message
 
 
 def test_runtime_validation_passes_for_realistic_values(tmp_path: Path) -> None:
