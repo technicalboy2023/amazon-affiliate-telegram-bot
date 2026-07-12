@@ -1,0 +1,31 @@
+# ============================================================
+# Telegram Amazon Affiliate Link Converter Platform
+# Python Dependencies
+# ============================================================
+
+# --- Telegram ---
+telethon==1.37.0
+aiogram==3.15.0
+cryptg==0.4.0
+
+# --- Database ---
+sqlalchemy[asyncio]==2.0.36
+aiosqlite==0.20.0
+alembic==1.14.1
+
+# --- HTTP ---
+aiohttp==3.10.0
+
+# --- Configuration ---
+pydantic==2.9.0
+pydantic-settings==2.2.1
+python-dotenv==1.0.1
+
+# --- Utilities ---
+cryptography==49.0.0
+uvloop==0.21.0; sys_platform != "win32"
+
+# --- Testing ---
+pytest==8.3.4
+pytest-asyncio==0.25.2
+ruff==0.8.6

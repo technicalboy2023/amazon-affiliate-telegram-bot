@@ -1,0 +1,9 @@
+.env
+data/affiliate.db
+data/logs/
+bot.log
+__pycache__/
+*.pyc
+.venv/
+*.session
+telegram/data/
