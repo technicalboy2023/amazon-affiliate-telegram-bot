@@ -192,7 +192,6 @@ async def cmd_cleanup(message: types.Message) -> None:
             user_id=container.settings.default_user_id,
             stats_age_days=container.settings.stats_retention_days,
             log_retention_days=container.settings.log_retention_days,
-            duplicate_days=container.settings.duplicate_cache_days,
         )
         await message.answer("Cleanup complete.")
     except Exception as e:

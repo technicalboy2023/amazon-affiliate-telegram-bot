@@ -135,7 +135,6 @@ async def _finalize_login(
     from services.message_publisher import MessagePublisher
     container.message_publisher = MessagePublisher(
         userbot=client,
-        duplicate_checker=container.duplicate_checker,
         session_factory=container.session_factory,
     )
     channel_monitor = ChannelMonitor(

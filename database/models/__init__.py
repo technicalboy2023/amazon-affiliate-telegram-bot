@@ -3,7 +3,6 @@
 from database.models.affiliate import AffiliateTag
 from database.models.base import Base
 from database.models.channel import DestChannel, SourceChannel
-from database.models.duplicate import DuplicateCache
 from database.models.message import ProcessedMessage
 from database.models.pipeline import AutomationPipeline
 from database.models.settings import AppSetting
@@ -22,6 +21,5 @@ __all__ = [
     "AutomationPipeline",
     "DailyStat",
     "CleanupHistory",
-    "DuplicateCache",
     "AppSetting",
 ]
