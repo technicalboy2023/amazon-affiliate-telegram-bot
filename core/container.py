@@ -11,7 +11,6 @@ if TYPE_CHECKING:
 
     from config.settings import Settings
     from services.channel_monitor import ChannelMonitor
-    from services.cleanup.service import CleanupService
     from services.duplicate_checker import DuplicateChecker
     from services.link_engine.engine import LinkEngine
     from services.message_processor import MessageProcessor
@@ -56,7 +55,6 @@ class Container:
     duplicate_checker: DuplicateChecker = field(default=None)
     user_service: UserService = field(default=None)
     stats_service: StatsService = field(default=None)
-    cleanup_service: CleanupService = field(default=None)
     settings_service: SettingsService = field(default=None)
 
     bot_rate_limiter: RateLimiter = field(default=None)

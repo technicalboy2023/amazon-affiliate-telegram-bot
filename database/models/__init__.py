@@ -7,7 +7,7 @@ from database.models.duplicate import DuplicateCache
 from database.models.message import ProcessedMessage
 from database.models.pipeline import AutomationPipeline
 from database.models.settings import AppSetting
-from database.models.stats import CleanupHistory, DailyStat
+from database.models.stats import DailyStat
 from database.models.telegram_account import TelegramAccount
 from database.models.user import User
 
@@ -21,7 +21,6 @@ __all__ = [
     "TelegramAccount",
     "AutomationPipeline",
     "DailyStat",
-    "CleanupHistory",
     "DuplicateCache",
     "AppSetting",
 ]

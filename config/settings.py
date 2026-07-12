@@ -91,21 +91,13 @@ class Settings(BaseSettings):
     # --- Database ---
     database_url: str = f"sqlite+aiosqlite:///{BASE_DIR / 'data' / 'affiliate.db'}"
 
-    # --- Cleanup (every 7 days — everything) ---
-    cleanup_enabled: bool = True
-    cleanup_interval_hours: int = 168  # 7 days
-    stats_retention_days: int = 7
-    log_retention_days: int = 7
-    duplicate_cache_days: int = 7
-    history_retention_days: int = 7
-
     # --- System Defaults (single-user personal bot) ---
     default_user_id: int = 1
     default_pipeline_id: int = 1
     default_telegram_account_id: int = 1
 
     # --- Duplicate Detection ---
-    duplicate_window_hours: int = 168  # 7 days (match cleanup)
+    duplicate_window_hours: int = 720  # 30 days
 
     # --- Rate Limiting ---
     bot_rate_limit: int = 20

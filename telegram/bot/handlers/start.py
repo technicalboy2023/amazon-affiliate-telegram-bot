@@ -25,8 +25,7 @@ COMMANDS_TEXT = (
     "/stop - Stop monitoring\n"
     "/resume - Resume forwarding\n"
     "/reload - Restart monitor with updated settings\n"
-    "/logout - Disconnect userbot\n"
-    "/cleanup - Manual DB cleanup\n\n"
+    "/logout - Disconnect userbot\n\n"
     "🔗 Affiliate:\n"
     "/affiliate <tag> - Set affiliate tag\n"
     "/clear_affiliate - Clear affiliate tag\n"
@@ -182,22 +181,6 @@ async def cmd_logout(message: types.Message) -> None:
         await session.execute(stmt)
         await session.commit()
     await message.answer("Logged out. Use /login to re-authenticate.")
-
-
-async def cmd_cleanup(message: types.Message) -> None:
-    container = get_container()
-    await message.answer("Running cleanup...")
-    try:
-        await container.cleanup_service.cleanup(
-            user_id=container.settings.default_user_id,
-            stats_age_days=container.settings.stats_retention_days,
-            log_retention_days=container.settings.log_retention_days,
-            duplicate_days=container.settings.duplicate_cache_days,
-        )
-        await message.answer("Cleanup complete.")
-    except Exception as e:
-        logger.error("Cleanup failed: %s", e)
-        await message.answer(f"Cleanup failed: {e}")
 
 
 async def cmd_domain(message: types.Message) -> None:

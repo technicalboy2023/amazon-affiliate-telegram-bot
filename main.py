@@ -19,7 +19,6 @@ from config.settings import get_settings, validate_runtime_settings
 from core.container import Container, set_container
 from database.engine import create_engine, create_session_factory, init_db
 from services.channel_monitor import ChannelMonitor
-from services.cleanup.service import CleanupService
 from services.duplicate_checker import DuplicateChecker
 from services.link_engine.engine import LinkEngine
 from services.link_engine.extractor import UrlExtractor
@@ -37,7 +36,6 @@ from telegram.bot.handlers.start import (
     cmd_add_replace,
     cmd_add_source,
     cmd_affiliate,
-    cmd_cleanup,
     cmd_clear_affiliate,
     cmd_clear_footer,
     cmd_clear_header,
@@ -74,7 +72,6 @@ from utils.rate_limiter import RateLimiter
 logger = logging.getLogger("main")
 
 container = Container()
-_cleanup_task: asyncio.Task | None = None
 
 
 async def init_container() -> None:
@@ -120,7 +117,6 @@ async def init_container() -> None:
     )
     container.settings_service = SettingsService(session_factory)
     container.stats_service = StatsService(session_factory)
-    container.cleanup_service = CleanupService(session_factory)
 
     container.message_processor = MessageProcessor(
         link_engine,
@@ -157,7 +153,6 @@ async def init_container() -> None:
     dp.message.register(cmd_stop, Command("stop"))
     dp.message.register(cmd_resume, Command("resume"))
     dp.message.register(cmd_logout, Command("logout"))
-    dp.message.register(cmd_cleanup, Command("cleanup"))
     dp.message.register(cmd_affiliate, Command("affiliate"))
     dp.message.register(cmd_clear_affiliate, Command("clear_affiliate"))
     dp.message.register(cmd_sources, Command("sources"))
@@ -210,50 +205,6 @@ async def init_container() -> None:
         logger.info("Use /login to authenticate your Telegram account")
 
 
-async def cleanup_loop() -> None:
-    settings = container.settings
-    if not settings.cleanup_enabled:
-        return
-    while True:
-        try:
-            await asyncio.sleep(settings.cleanup_interval_hours * 3600)
-            await container.cleanup_service.cleanup(
-                user_id=settings.default_user_id,
-                stats_age_days=settings.stats_retention_days,
-                log_retention_days=settings.log_retention_days,
-                duplicate_days=settings.duplicate_cache_days,
-            )
-        except asyncio.CancelledError:
-            break
-        except Exception as e:
-            logger.error("Cleanup error: %s", e)
-
-
-async def _run_cleanup_if_due() -> None:
-    from datetime import UTC, datetime, timedelta
-
-    from sqlalchemy import func, select
-
-    from database.models.stats import CleanupHistory
-    uid = container.settings.default_user_id
-    interval_hours = container.settings.cleanup_interval_hours
-    cutoff = datetime.now(UTC) - timedelta(hours=interval_hours)
-    async with container.session_factory() as session:
-        stmt = select(func.max(CleanupHistory.started_at)).where(
-            CleanupHistory.user_id == uid,
-        )
-        result = await session.execute(stmt)
-        last_cleanup = result.scalar()
-    if last_cleanup is None or last_cleanup.replace(tzinfo=UTC) < cutoff:
-        logger.info("Startup: cleanup overdue, running now")
-        await container.cleanup_service.cleanup(
-            user_id=uid,
-            stats_age_days=container.settings.stats_retention_days,
-            log_retention_days=container.settings.log_retention_days,
-            duplicate_days=container.settings.duplicate_cache_days,
-        )
-
-
 async def main() -> None:
     settings = get_settings()
     setup_logging(settings.log_level, settings.log_file, settings.log_max_size_mb, settings.log_backup_count)
@@ -265,7 +216,6 @@ async def main() -> None:
     set_container(container)
 
     await container.bot.set_my_commands([
-        BotCommand(command="start", description="Start the bot"),
         BotCommand(command="help", description="Show all commands"),
         BotCommand(command="status", description="Check bot status"),
         BotCommand(command="config", description="View all runtime settings"),
@@ -277,7 +227,6 @@ async def main() -> None:
         BotCommand(command="stop", description="Stop monitoring"),
         BotCommand(command="resume", description="Resume forwarding"),
         BotCommand(command="logout", description="Disconnect userbot"),
-        BotCommand(command="cleanup", description="Manual DB cleanup"),
         BotCommand(command="affiliate", description="Set affiliate tag"),
         BotCommand(command="clear_affiliate", description="Clear affiliate tag"),
         BotCommand(command="sources", description="List source channels"),
@@ -301,10 +250,6 @@ async def main() -> None:
         BotCommand(command="login", description="Log in via QR code scan"),
     ])
 
-    global _cleanup_task
-    await _run_cleanup_if_due()
-    _cleanup_task = asyncio.create_task(cleanup_loop())
-
     stop_event = asyncio.Event()
 
     def _signal_handler() -> None:
@@ -324,8 +269,6 @@ async def main() -> None:
         pass
     finally:
         logger.info("Shutting down...")
-        if _cleanup_task:
-            _cleanup_task.cancel()
         await container.shutdown()
 
 
