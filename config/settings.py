@@ -97,7 +97,7 @@ class Settings(BaseSettings):
     default_telegram_account_id: int = 1
 
     # --- Duplicate Detection ---
-    duplicate_window_hours: int = 720  # 30 days
+    duplicate_window_hours: int = 1  # 1 hour — same ASIN re-posted after 1h is allowed
 
     # --- Rate Limiting ---
     bot_rate_limit: int = 20
