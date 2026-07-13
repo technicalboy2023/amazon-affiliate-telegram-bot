@@ -2,10 +2,8 @@ import asyncio
 import logging
 
 from telethon import TelegramClient
-from telethon.sessions import StringSession
 
 from config.settings import Settings
-from utils.encryption import decrypt
 
 logger = logging.getLogger(__name__)
 
@@ -31,36 +29,46 @@ class UserbotClient:
         if self._client and self._client.is_connected():
             await self._client.disconnect()
             logger.info("Disconnected previous userbot client")
-        session_string = await self._load_session()
-        self._make_client(session_string)
-        await self._client.connect()
-        if session_string:
-            if not await self._client.is_user_authorized():
-                logger.warning("Saved session is invalid")
-                self._make_client(None)
-                await self._client.connect()
-                self._running = False
-                return self._client
-            self._running = True
-            me = await self._client.get_me()
-            logger.info("Userbot connected as @%s", me.username)
-            self._start_watchdog()
-        else:
-            logger.info("No saved session. Use /login to authenticate")
-        return self._client
 
-    def _make_client(self, session_string: str | None) -> None:
+        # Use file-based session like the other repo (telegram-auto-forwarding-bot).
+        # Telethon auto-saves the session to "userbot_session.session" file.
+        # On first run, client.start(phone=...) will prompt for OTP automatically.
+        # On subsequent runs, the saved session is reused seamlessly.
         self._client = TelegramClient(
-            StringSession(session_string) if session_string else StringSession(),
+            "userbot_session",  # file-based session (auto-saved by Telethon)
             self.settings.telegram_api_id,
             self.settings.telegram_api_hash,
-            device_model="Samsung Galaxy S23",
-            system_version="Android 14",
-            app_version="1.0.0",
+            device_model="SM-S918B",
+            system_version="SDK 34",
+            app_version="10.10.0.4377",
             lang_code="en",
             connection_retries=5,
             retry_delay=3,
         )
+
+        await self._client.connect()
+
+        if await self._client.is_user_authorized():
+            self._running = True
+            me = await self._client.get_me()
+            logger.info("Userbot reconnected as @%s", me.username)
+            self._start_watchdog()
+        elif self.settings.telegram_phone:
+            # First-time setup: phone number is configured but no session file exists yet.
+            # The user must run scripts/generate_session.py on their local machine
+            # to create the session file, then upload it to the server.
+            logger.info(
+                "No saved session file found. "
+                "Run scripts/generate_session.py on your local machine, "
+                "then upload the 'userbot_session.session' file to the server."
+            )
+        else:
+            logger.info(
+                "No saved session and no phone configured. "
+                "Set TELEGRAM_PHONE in .env and run scripts/generate_session.py locally."
+            )
+
+        return self._client
 
     async def replace_client(self, client: TelegramClient) -> None:
         self._stop_watchdog()
@@ -76,51 +84,6 @@ class UserbotClient:
         if self._client and self._client.is_connected():
             await self._client.disconnect()
             logger.info("Userbot disconnected")
-
-    async def _load_session(self) -> str | None:
-        # Try to use the container's session factory if available (post-startup
-        # reconnects). During initial startup the container hasn't been
-        # set_container() yet, so we fall back to creating a temporary engine.
-        try:
-            from core.container import get_container
-            container = get_container()
-            if container.session_factory is not None:
-                return await self._query_session(container.session_factory)
-        except RuntimeError:
-            pass
-        # Fallback: startup path – container not fully initialised yet
-        from database.engine import create_engine, create_session_factory
-        engine = create_engine(self.settings.database_url)
-        sf = create_session_factory(engine)
-        try:
-            return await self._query_session(sf)
-        finally:
-            await engine.dispose()
-
-    async def _query_session(self, session_factory) -> str | None:
-        from sqlalchemy import select
-
-        from database.models.telegram_account import TelegramAccount
-        from database.models.user import User
-        async with session_factory() as session:
-            stmt = (
-                select(TelegramAccount)
-                .join(User, TelegramAccount.user_id == User.id)
-                .where(
-                    TelegramAccount.is_active.is_(True),
-                    TelegramAccount.session_string_encrypted.isnot(None),
-                )
-                .order_by(TelegramAccount.last_connected_at.desc().nullslast())
-                .limit(1)
-            )
-            result = await session.execute(stmt)
-            account = result.scalar_one_or_none()
-        if account and account.session_string_encrypted:
-            try:
-                return decrypt(account.session_string_encrypted)
-            except Exception as e:
-                logger.error("Failed to decrypt session: %s", e)
-        return None
 
     async def ensure_connected(self) -> TelegramClient:
         if self._client and self._client.is_connected():

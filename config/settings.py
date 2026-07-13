@@ -73,6 +73,7 @@ class Settings(BaseSettings):
     # --- Telegram Userbot (Telethon) ---
     telegram_api_id: int = Field(default=0, alias="TELEGRAM_API_ID")
     telegram_api_hash: str = Field(default="", alias="TELEGRAM_API_HASH")
+    telegram_phone: str = Field(default="", alias="TELEGRAM_PHONE")
 
     # --- Admin ---
     admin_telegram_id: int = 0

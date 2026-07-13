@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 """
-Standalone script to generate a Telethon session STRING locally.
+Standalone script to generate a Telethon session FILE locally.
 
-Use this on your LOCAL machine (not the server) to create a session
-string that you can then import on the alwaysdata server via
-scripts/import_session.py.
+The session file (userbot_session.session) will be created in the current
+directory. Upload this file to the server so the bot can use it.
 
-This bypasses Telegram's security blocks that happen when logging
-in from a VPS/server IP (like alwaysdata in France).
+This matches the file-based session approach used by the bot (client.py).
 
 How to use:
   1. Copy this script to your local machine (Windows/Mac/Linux)
@@ -15,12 +13,13 @@ How to use:
   3. Run: python generate_session.py
   4. Enter your API ID, API Hash, and phone number
   5. Enter the OTP code you receive
-  6. Copy the output session string
-  7. SSH into alwaysdata and run: python import_session.py <session_string>
+  6. Upload the generated "userbot_session.session" file to the server
+  7. Restart the alwaysdata service
 """
 
 import asyncio
 import sys
+from pathlib import Path
 
 from telethon import TelegramClient
 from telethon.errors import (
@@ -29,13 +28,12 @@ from telethon.errors import (
     PhoneNumberInvalidError,
     SessionPasswordNeededError,
 )
-from telethon.sessions import StringSession
 
 
 async def main() -> None:
     print("=" * 60)
-    print("  TELEGRAM SESSION GENERATOR")
-    print("  Run this on your LOCAL machine (not VPS)")
+    print("  TELEGRAM SESSION FILE GENERATOR")
+    print("  Generates userbot_session.session file")
     print("=" * 60)
     print()
 
@@ -53,48 +51,62 @@ async def main() -> None:
         print("❌ API ID must be a number!")
         sys.exit(1)
 
+    # Use file-based session - same as client.py
+    # Telethon auto-saves to "userbot_session.session"
     client = TelegramClient(
-        StringSession(),
+        "userbot_session",  # file-based session (auto-saved by Telethon)
         api_id,
         api_hash,
-        device_model="SM-S918B",       # Samsung Galaxy S23 Ultra model code
-        system_version="SDK 34",       # Android 14 API level
-        app_version="10.10.0.4377",    # Real Telegram Android version
+        device_model="SM-S918B",
+        system_version="SDK 34",
+        app_version="10.10.0.4377",
         lang_code="en",
     )
 
     try:
         await client.connect()
-        print(f"\n📱 Requesting code for {phone}...")
-        sent_code = await client.send_code_request(phone)
-        print(f"✅ Code sent! Check your Telegram app.")
-        print()
 
-        code = input("Enter the code you received: ").strip()
-        code = code.replace(" ", "")
+        if await client.is_user_authorized():
+            me = await client.get_me()
+            print(f"\n✅ Already logged in as @{me.username or me.first_name}")
+        else:
+            print(f"\n📱 Requesting code for {phone}...")
+            await client.send_code_request(phone)
+            print("✅ Code sent! Check your Telegram app.")
+            print()
 
-        if not code:
-            print("❌ Code cannot be empty!")
-            sys.exit(1)
+            code = input("Enter the code you received: ").strip()
+            code = code.replace(" ", "")
 
-        try:
-            me = await client.sign_in(phone, code, phone_code_hash=sent_code.phone_code_hash)
-        except SessionPasswordNeededError:
-            password = input("🔐 2FA is enabled! Enter your password: ").strip()
-            me = await client.sign_in(password=password)
+            if not code:
+                print("❌ Code cannot be empty!")
+                sys.exit(1)
 
-        print(f"\n✅ Login successful! Logged in as @{me.username or me.first_name}")
+            try:
+                me = await client.sign_in(phone, code)
+            except SessionPasswordNeededError:
+                password = input("🔐 2FA is enabled! Enter your password: ").strip()
+                me = await client.sign_in(password=password)
 
-        # Save the session string
-        session_string = client.session.save()
+            print(f"\n✅ Login successful! Logged in as @{me.username or me.first_name}")
+
+        # Session is auto-saved to "userbot_session.session" by Telethon
+        session_file = Path("userbot_session.session")
+        if session_file.exists():
+            print(f"\n✅ Session file created: {session_file.resolve()}")
+            print(f"   File size: {session_file.stat().st_size} bytes")
+        else:
+            print(f"\n⚠️ Session file not found. Using in-memory session only.")
+            print(f"   Try running with: TelegramClient('userbot_session', ...)")
+
         print("\n" + "=" * 60)
-        print("📋 YOUR SESSION STRING (copy this):")
+        print("📋 NEXT STEPS:")
         print("=" * 60)
-        print(session_string)
-        print("=" * 60)
-        print()
-        print("Now SSH into your alwaysdata server and run:")
-        print(f"  python scripts/import_session.py {session_string[:20]}...")
+        print("1. Upload the 'userbot_session.session' file to the server")
+        print("2. SSH command:")
+        print(f"   scp userbot_session.session achal@ssh-achal.alwaysdata.net:/home/achal/amazon-affiliate-telegram-bot/")
+        print("3. Restart the alwaysdata service")
+        print("4. Bot will auto-connect using the session file!")
         print()
 
     except PhoneNumberInvalidError:

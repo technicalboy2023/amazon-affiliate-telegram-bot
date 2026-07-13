@@ -29,7 +29,7 @@ from services.message_publisher import MessagePublisher
 from services.settings_service import SettingsService
 from services.stats_service import StatsService
 from services.user_service import UserService
-from telegram.bot.handlers.login import register_login_handlers
+from telegram.bot.handlers.login import cmd_login
 from telegram.bot.handlers.start import (
     cmd_add_block,
     cmd_add_replace,
@@ -169,7 +169,7 @@ async def init_container() -> None:
     dp.message.register(cmd_clear_header, Command("clear_header"))
     dp.message.register(cmd_clear_footer, Command("clear_footer"))
     dp.message.register(cmd_reload, Command("reload"))
-    register_login_handlers(dp)
+    dp.message.register(cmd_login, Command("login"))
 
     userbot_client = UserbotClient(settings)
     container.userbot_client = userbot_client
