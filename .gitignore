@@ -6,3 +6,21 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 data/
+
+# Telegram session file (contains login credentials!)
+*.session
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Python build
+*.egg-info/
+dist/
+build/
+*.egg
