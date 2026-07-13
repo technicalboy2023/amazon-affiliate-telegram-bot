@@ -49,7 +49,7 @@ async def cmd_login(message: types.Message) -> None:
         "   `userbot_session.session`\n\n"
         "6️⃣ Restart the service\n\n"
         f"📞 Configured phone: `{phone}`\n"
-        "❓ Need help? Check `guide/alwaysdata-setup-guide.txt`"
+        "❓ Need help? Check the `README.md` for full setup guide"
     )
 
     await message.answer(instructions, parse_mode="Markdown")
