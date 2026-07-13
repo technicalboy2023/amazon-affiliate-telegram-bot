@@ -15,6 +15,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from telethon import TelegramClient
 from telethon.errors import (
+    PhoneCodeExpiredError,
     PhoneCodeInvalidError,
     PhoneNumberInvalidError,
     SessionPasswordNeededError,
@@ -47,7 +48,7 @@ _login_data: dict[int, dict] = {}
 
 # How long we keep a stale login session alive before the user must
 # start over (seconds).
-_LOGIN_TIMEOUT = 300  # 5 minutes – Telethon OTP codes last ~5 min
+_LOGIN_TIMEOUT = 180  # 3 minutes – Telethon OTP codes expire faster
 
 
 def _cleanup_login(user_id: int) -> None:
@@ -193,6 +194,25 @@ async def process_otp(message: types.Message, state: FSMContext) -> None:
             "🔐 Two-factor authentication is enabled on this account.\n\n"
             "Please enter your 2FA password:"
         )
+    except PhoneCodeExpiredError:
+        # Code expired – resend a fresh one automatically
+        try:
+            # Ensure client is still connected before resending
+            if not client.is_connected():
+                await client.connect()
+            sent_code = await client.send_code_request(phone)
+            data["phone_code_hash"] = sent_code.phone_code_hash
+            # Schedule a new cleanup for the fresh code (old cleanup will find
+            # "finalized": False and won't clean up since we haven't completed yet)
+            asyncio.create_task(_schedule_cleanup(message.from_user.id))
+            await message.answer(
+                "⌛ The previous code expired.\n"
+                "✅ A fresh verification code has been sent to your Telegram app / SMS.\n\n"
+                "Please enter the new code (it expires in ~2 minutes):"
+            )
+        except Exception as e2:
+            logger.error("Resend code error: %s", e2)
+            await message.answer(f"❌ Failed to resend code: {e2}")
     except PhoneCodeInvalidError:
         await message.answer("❌ Invalid code. Please check and try again.")
     except Exception as e:
