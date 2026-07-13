@@ -1,15 +1,9 @@
 """
-Simplified login handler using file-based session approach.
+Login handler for file-based session setup.
 
-Instead of a complex FSM phone/OTP flow (which triggers Telegram security
-from VPS IPs), the user generates the session file locally on their machine
-and uploads it to the server. This completely bypasses VPS login blocks.
-
-Required steps:
-  1. pip install telethon on local machine
-  2. Run scripts/generate_session.py locally
-  3. Upload the generated "userbot_session.session" file to the server
-  4. Restart the service
+Run scripts/generate_session.py via SSH to create the Telethon session file
+(userbot_session.session) directly in the project directory — no local
+machine or SCP upload needed. Then restart the alwaysdata service.
 """
 
 import logging
@@ -36,18 +30,15 @@ async def cmd_login(message: types.Message) -> None:
     phone = container.settings.telegram_phone or "Not configured"
 
     instructions = (
-        "📱 *File-Based Session Login*\n\n"
-        "Since the bot runs on a server (alwaysdata), Telegram blocks direct\n"
-        "OTP login from here. Instead, generate the session on your local machine:\n\n"
-        "1️⃣ On your LOCAL PC/phone, install Telethon:\n"
-        "   `pip install telethon`\n\n"
-        "2️⃣ Run the session generator:\n"
+        "📱 *Session Login*\n\n"
+        "Generate the session file directly on the server via SSH:\n\n"
+        "1️⃣ SSH into alwaysdata:\n"
+        "   `ssh achal@ssh-achal.alwaysdata.net`\n\n"
+        "2️⃣ Activate venv and run:\n"
+        "   `cd ~/amazon-affiliate-telegram-bot && source .venv/bin/activate`\n"
         "   `python scripts/generate_session.py`\n\n"
-        "3️⃣ Enter your API ID, API Hash, and phone number\n\n"
-        "4️⃣ Enter the OTP code you receive\n\n"
-        "5️⃣ Upload the generated file to the server:\n"
-        "   `userbot_session.session`\n\n"
-        "6️⃣ Restart the service\n\n"
+        "3️⃣ Enter the OTP code when prompted\n\n"
+        "4️⃣ Restart the service (Advanced → Services → Save)\n\n"
         f"📞 Configured phone: `{phone}`\n"
         "❓ Need help? Check the `README.md` for full setup guide"
     )

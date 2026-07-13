@@ -159,32 +159,27 @@ Example: `Aman@4899` → `Aman%404899`
 
 ---
 
-### 8️⃣ Generate Session File
+### 8️⃣ Generate Session File (via SSH)
 
-Since the server (alwaysdata) is located in France, Telegram blocks OTP login from there. Instead, **generate the session on your local machine** and upload it.
-
-#### On your LOCAL PC/Mac/Phone:
+Run the session generator **directly on the server** via SSH. No need for local machine.
 
 ```bash
-# Install Telethon
-pip install telethon
-
-# Run the session generator
+cd ~/amazon-affiliate-telegram-bot
+source .venv/bin/activate
 python scripts/generate_session.py
 ```
 
 The script will:
-1. Auto-read API ID, Hash, Phone from `.env` (if available)
-2. Send an OTP to your Telegram
-3. Create a `userbot_session.session` file
+1. Auto-read API ID, Hash, Phone from your `.env` file
+2. Send an OTP to your Telegram app
+3. Create `userbot_session.session` directly in the project folder
+4. You're done — no upload needed!
 
-#### Upload session to server:
+⚠️ Keep the SSH session open while entering the OTP code you receive on Telegram.
 
-```bash
-scp userbot_session.session YOUR_USERNAME@ssh-YOUR_ACCOUNT.alwaysdata.net:~/amazon-affiliate-telegram-bot/
-# Example:
-scp userbot_session.session achal@ssh-achal.alwaysdata.net:/home/achal/amazon-affiliate-telegram-bot/
-```
+> The session file is generated on the server itself. If Telegram blocks the OTP
+> (unlikely from alwaysdata), you can run the same script on any machine and
+> copy the `.session` file to the server.
 
 ---
 
@@ -387,7 +382,13 @@ cp .env.example .env
 ## ⚠️ Troubleshooting
 
 ### Bot won't start — "No saved session file found"
-Run `scripts/generate_session.py` on your local machine, then upload the `userbot_session.session` file to the server.
+SSH into the server, activate the venv, and run `python scripts/generate_session.py` directly:
+```bash
+cd ~/amazon-affiliate-telegram-bot
+source .venv/bin/activate
+python scripts/generate_session.py
+```
+Then restart the service (Advanced → Services → affiliate-bot → Save).
 
 ### Database connection failed — "FATAL: password authentication failed"
 Check your `DATABASE_URL` in `.env`. If your password contains special characters like `@`, `#`, or `!`, they must be **URL-encoded**:

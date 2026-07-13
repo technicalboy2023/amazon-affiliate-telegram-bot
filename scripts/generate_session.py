@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
 """
-Standalone script to generate a Telethon session FILE locally.
+Standalone script to generate a Telethon session FILE.
 
 The session file (userbot_session.session) will be created in the current
-directory. Upload this file to the server so the bot can use it.
-
-This matches the file-based session approach used by the bot (client.py).
+directory. Run this on the server via SSH — the session file is saved
+directly in the project folder where the bot can use it.
 
 How to use:
-  1. Copy this script to your local machine (Windows/Mac/Linux)
-  2. Install telethon: pip install telethon
-  3. Run: python generate_session.py
-  4. Enter your API ID, API Hash, and phone number
-  5. Enter the OTP code you receive
-  6. Upload the generated "userbot_session.session" file to the server
-  7. Restart the alwaysdata service
+  1. cd ~/amazon-affiliate-telegram-bot
+  2. source .venv/bin/activate
+  3. python scripts/generate_session.py
+  4. Enter the OTP code you receive on Telegram
+  5. Session file is auto-saved in the current directory
+  6. Restart the alwaysdata service
 """
 
 import asyncio
@@ -118,11 +116,9 @@ async def main() -> None:
         print("\n" + "=" * 60)
         print("📋 NEXT STEPS:")
         print("=" * 60)
-        print("1. Upload the 'userbot_session.session' file to the server")
-        print("2. SSH command:")
-        print(f"   scp userbot_session.session achal@ssh-achal.alwaysdata.net:/home/achal/amazon-affiliate-telegram-bot/")
-        print("3. Restart the alwaysdata service")
-        print("4. Bot will auto-connect using the session file!")
+        print("1. Session file is already in the project folder!")
+        print("2. Restart the alwaysdata service (Advanced → Services → Save)")
+        print("3. Bot will auto-connect using the session file!")
         print()
 
     except PhoneNumberInvalidError:
