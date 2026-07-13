@@ -96,7 +96,7 @@ class ChannelMonitor:
                 return
 
             self._messages_received += 1
-            self._last_message_received_time = asyncio.get_event_loop().time()
+            self._last_message_received_time = asyncio.get_running_loop().time()
 
             has_media, media_type, media_obj = _detect_media(event)
 
@@ -135,7 +135,7 @@ class ChannelMonitor:
 
             delay = await self.customizer.get_delay()
             if delay > 0:
-                elapsed = asyncio.get_event_loop().time() - self._last_forward_time
+                elapsed = asyncio.get_running_loop().time() - self._last_forward_time
                 wait = max(0, delay - elapsed)
                 if wait > 0:
                     logger.debug("Waiting %.1fs before next forward", wait)
@@ -157,7 +157,7 @@ class ChannelMonitor:
             )
 
             if published_id is not None:
-                self._last_forward_time = asyncio.get_event_loop().time()
+                self._last_forward_time = asyncio.get_running_loop().time()
                 self._messages_forwarded += 1
                 await self.stats_service.record_publish(user_id=self.settings.default_user_id, pipeline_id=self.settings.default_pipeline_id)
 
