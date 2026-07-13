@@ -1,10 +1,9 @@
+import asyncio
 import logging
 
 from aiogram import types
-from sqlalchemy import update as sql_update
 
 from core.container import get_container
-from database.models import TelegramAccount
 from database.repositories.message_repo import MessageRepository
 from services.post_customizer import PostCustomizer
 
@@ -85,14 +84,35 @@ async def cmd_status(message: types.Message) -> None:
     else:
         status_text = "stopped"
     userbot_connected = bool(container.userbot and container.userbot.is_connected())
+    
+    # Real-time monitoring stats
+    if cm and cm._last_forward_time > 0:
+        last_fwd = '{:.0f}s ago'.format(asyncio.get_running_loop().time() - cm._last_forward_time)
+    else:
+        last_fwd = 'N/A'
+    if cm and cm._last_message_received_time > 0:
+        last_msg = '{:.0f}s ago'.format(asyncio.get_running_loop().time() - cm._last_message_received_time)
+    else:
+        last_msg = 'N/A'
+    msgs_fwd = cm._messages_forwarded if cm else 0
+    msgs_recv = cm._messages_received if cm else 0
+    
     lines = [
         f"Bot: @{(await message.bot.get_me()).username}",
-        f"Userbot: {'connected' if userbot_connected else 'disconnected'}",
+        f"Userbot: {'🟢 connected' if userbot_connected else '🔴 disconnected'}",
+        f"Monitoring: {'🟢 ' + status_text if is_monitoring else '⏸️ ' + status_text if is_paused else '⏹️ ' + status_text}",
+        f"",
+        f"📡 Real-time Stats:",
+        f"  Messages received: {msgs_recv}",
+        f"  Messages forwarded: {msgs_fwd}",
+        f"  Last message: {last_msg}",
+        f"  Last forward: {last_fwd}",
+        f"",
+        f"⚙️ Config:",
         f"Affiliate tag: {tag or '(not set)'}",
         f"Domain: {domain}",
         f"Source channels: {', '.join(sources) if sources else '(none)'}",
         f"Destination: @{dest}" if dest else "Destination: (not set)",
-        f"Monitoring: {status_text}",
     ]
     await message.answer("\n".join(lines))
 
@@ -176,15 +196,7 @@ async def cmd_logout(message: types.Message) -> None:
         await container.userbot_client.stop()
     if container.userbot and container.userbot.is_connected():
         await container.userbot.disconnect()
-    async with container.session_factory() as session:
-        stmt = (
-            sql_update(TelegramAccount)
-            .where(TelegramAccount.is_active.is_(True))
-            .values(is_active=False, session_string_encrypted=None, status="logged_out")
-        )
-        await session.execute(stmt)
-        await session.commit()
-    await message.answer("Logged out. Use /login to re-authenticate.")
+    await message.answer("Logged out. Re-run /login and restart the service to re-authenticate.")
 
 
 async def cmd_domain(message: types.Message) -> None:

@@ -52,6 +52,9 @@ class ChannelMonitor:
         self.customizer = PostCustomizer(settings_service)
         self._handler = None
         self._last_forward_time = 0.0
+        self._last_message_received_time = 0.0
+        self._messages_forwarded = 0
+        self._messages_received = 0
         self._process_lock = asyncio.Lock()
 
     async def start(self) -> None:
@@ -91,6 +94,9 @@ class ChannelMonitor:
             if await self.publisher.is_already_processed(source_channel_id, source_message_id):
                 logger.info("Skipping already processed msg %d from channel %d", source_message_id, source_channel_id)
                 return
+
+            self._messages_received += 1
+            self._last_message_received_time = asyncio.get_event_loop().time()
 
             has_media, media_type, media_obj = _detect_media(event)
 
@@ -152,6 +158,7 @@ class ChannelMonitor:
 
             if published_id is not None:
                 self._last_forward_time = asyncio.get_event_loop().time()
+                self._messages_forwarded += 1
                 await self.stats_service.record_publish(user_id=self.settings.default_user_id, pipeline_id=self.settings.default_pipeline_id)
 
         except Exception as e:

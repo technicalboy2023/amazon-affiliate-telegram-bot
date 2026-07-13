@@ -20,10 +20,6 @@ class TelegramAccount(Base, TimestampMixin):
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     telegram_user_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
-    phone_number_encrypted: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    session_string_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
-    api_id_encrypted: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    api_hash_encrypted: Mapped[str | None] = mapped_column(String(500), nullable=True)
     username: Mapped[str | None] = mapped_column(String(255), nullable=True)
     display_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

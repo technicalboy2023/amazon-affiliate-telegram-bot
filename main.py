@@ -249,7 +249,7 @@ async def main() -> None:
         BotCommand(command="clear_header", description="Remove header"),
         BotCommand(command="clear_footer", description="Remove footer"),
         BotCommand(command="reload", description="Reload monitor settings"),
-        BotCommand(command="login", description="Log in via phone + OTP"),
+        BotCommand(command="login", description="Show session setup instructions"),
     ])
 
     stop_event = asyncio.Event()

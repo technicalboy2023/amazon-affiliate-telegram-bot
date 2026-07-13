@@ -70,14 +70,6 @@ class UserbotClient:
 
         return self._client
 
-    async def replace_client(self, client: TelegramClient) -> None:
-        self._stop_watchdog()
-        if self._client and self._client.is_connected():
-            await self._client.disconnect()
-        self._client = client
-        self._running = True
-        self._start_watchdog()
-
     async def stop(self) -> None:
         self._running = False
         self._stop_watchdog()
