@@ -25,8 +25,8 @@ def create_engine(database_url: str):
         database_url,
         echo=False,
         pool_pre_ping=True,
-        pool_size=5,
-        max_overflow=5,
+        pool_size=2,
+        max_overflow=2,
     )
     logger.info("Database engine created")
     return engine

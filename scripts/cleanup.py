@@ -16,7 +16,7 @@ from sqlalchemy import create_engine, text
 BASE_DIR = Path(__file__).resolve().parent.parent
 LOG_DIR = BASE_DIR / "data" / "logs"
 LOG_FILE = LOG_DIR / "cleanup.log"
-RETENTION_DAYS = 7
+RETENTION_DAYS = 3  # 3 days for alwaysdata 1GB storage limit
 
 CLEANABLE = [
     {"table": "processed_messages", "column": "processed_at", "label": "forwards"},

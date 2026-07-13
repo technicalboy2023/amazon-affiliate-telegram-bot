@@ -54,6 +54,10 @@ class UserbotClient:
             StringSession(session_string) if session_string else StringSession(),
             self.settings.telegram_api_id,
             self.settings.telegram_api_hash,
+            device_model="Samsung Galaxy S23",
+            system_version="Android 14",
+            app_version="1.0.0",
+            lang_code="en",
             connection_retries=5,
             retry_delay=3,
         )
@@ -74,29 +78,43 @@ class UserbotClient:
             logger.info("Userbot disconnected")
 
     async def _load_session(self) -> str | None:
+        # Try to use the container's session factory if available (post-startup
+        # reconnects). During initial startup the container hasn't been
+        # set_container() yet, so we fall back to creating a temporary engine.
+        try:
+            from core.container import get_container
+            container = get_container()
+            if container.session_factory is not None:
+                return await self._query_session(container.session_factory)
+        except RuntimeError:
+            pass
+        # Fallback: startup path – container not fully initialised yet
         from database.engine import create_engine, create_session_factory
         engine = create_engine(self.settings.database_url)
         sf = create_session_factory(engine)
         try:
-            async with sf() as session:
-                from sqlalchemy import select
-
-                from database.models.telegram_account import TelegramAccount
-                from database.models.user import User
-                stmt = (
-                    select(TelegramAccount)
-                    .join(User, TelegramAccount.user_id == User.id)
-                    .where(
-                        TelegramAccount.is_active.is_(True),
-                        TelegramAccount.session_string_encrypted.isnot(None),
-                    )
-                    .order_by(TelegramAccount.last_connected_at.desc().nullslast())
-                    .limit(1)
-                )
-                result = await session.execute(stmt)
-                account = result.scalar_one_or_none()
+            return await self._query_session(sf)
         finally:
             await engine.dispose()
+
+    async def _query_session(self, session_factory) -> str | None:
+        from sqlalchemy import select
+
+        from database.models.telegram_account import TelegramAccount
+        from database.models.user import User
+        async with session_factory() as session:
+            stmt = (
+                select(TelegramAccount)
+                .join(User, TelegramAccount.user_id == User.id)
+                .where(
+                    TelegramAccount.is_active.is_(True),
+                    TelegramAccount.session_string_encrypted.isnot(None),
+                )
+                .order_by(TelegramAccount.last_connected_at.desc().nullslast())
+                .limit(1)
+            )
+            result = await session.execute(stmt)
+            account = result.scalar_one_or_none()
         if account and account.session_string_encrypted:
             try:
                 return decrypt(account.session_string_encrypted)

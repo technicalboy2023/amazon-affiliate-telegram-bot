@@ -23,7 +23,9 @@ from telethon.sessions import StringSession
 
 from config.settings import get_settings
 from core.container import get_container
+from database.models.telegram_account import TelegramAccount
 from database.repositories.telegram_account_repo import TelegramAccountRepository
+from sqlalchemy import update as sql_update
 from database.repositories.user_repo import UserRepository
 from utils.encryption import encrypt
 
@@ -259,6 +261,13 @@ async def _finalize_login(
 
     container = get_container()
     async with container.session_factory() as session:
+        # Deactivate old accounts first to avoid stale session accumulation
+        await session.execute(
+            sql_update(TelegramAccount)
+            .where(TelegramAccount.is_active.is_(True))
+            .values(is_active=False, status="replaced")
+        )
+
         user_repo = UserRepository(session)
         tg_repo = TelegramAccountRepository(session)
 

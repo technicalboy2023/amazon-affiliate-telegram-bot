@@ -177,7 +177,11 @@ async def cmd_logout(message: types.Message) -> None:
     if container.userbot and container.userbot.is_connected():
         await container.userbot.disconnect()
     async with container.session_factory() as session:
-        stmt = sql_update(TelegramAccount).values(is_active=False, session_string_encrypted=None, status="logged_out")
+        stmt = (
+            sql_update(TelegramAccount)
+            .where(TelegramAccount.is_active.is_(True))
+            .values(is_active=False, session_string_encrypted=None, status="logged_out")
+        )
         await session.execute(stmt)
         await session.commit()
     await message.answer("Logged out. Use /login to re-authenticate.")
