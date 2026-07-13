@@ -48,7 +48,7 @@ COMMANDS_TEXT = (
     "/clear_header - Remove header\n"
     "/clear_footer - Remove footer\n\n"
     "🔐 Auth:\n"
-    "/login - Log in to Telegram account"
+    "/login - Log in via phone number + OTP"
 )
 
 
