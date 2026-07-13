@@ -18,9 +18,11 @@ How to use:
 """
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
+from dotenv import load_dotenv
 from telethon import TelegramClient
 from telethon.errors import (
     PhoneCodeExpiredError,
@@ -28,6 +30,11 @@ from telethon.errors import (
     PhoneNumberInvalidError,
     SessionPasswordNeededError,
 )
+
+# Auto-load .env file so user doesn't need to enter API ID/Hash/Phone manually
+env_path = Path(__file__).resolve().parent.parent / ".env"
+if env_path.exists():
+    load_dotenv(env_path)
 
 
 async def main() -> None:
@@ -37,18 +44,27 @@ async def main() -> None:
     print("=" * 60)
     print()
 
-    api_id = input("Enter your TELEGRAM_API_ID: ").strip()
-    api_hash = input("Enter your TELEGRAM_API_HASH: ").strip()
-    phone = input("Enter your phone number (e.g., +918009164899): ").strip()
+    # Auto-read from .env if available
+    api_id = os.getenv("TELEGRAM_API_ID", "").strip()
+    api_hash = os.getenv("TELEGRAM_API_HASH", "").strip()
+    phone = os.getenv("TELEGRAM_PHONE", "").strip()
+
+    if not api_id:
+        api_id = input("Enter TELEGRAM_API_ID: ").strip()
+    if not api_hash:
+        api_hash = input("Enter TELEGRAM_API_HASH: ").strip()
+    if not phone:
+        phone = input("Enter phone (e.g., +918009164899): ").strip()
 
     if not api_id or not api_hash or not phone:
-        print("❌ All fields are required!")
+        print("❌ API_ID, API_HASH and PHONE are required!")
+        print("   Set them in .env or enter manually.")
         sys.exit(1)
 
     try:
         api_id = int(api_id)
     except ValueError:
-        print("❌ API ID must be a number!")
+        print("❌ TELEGRAM_API_ID must be a number! Check your .env")
         sys.exit(1)
 
     # Use file-based session - same as client.py
