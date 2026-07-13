@@ -78,6 +78,9 @@ Works with any Amazon domain (`.in`, `.com`, etc.) and supports **media posts** 
    ```
    ⚠️ **Important:** If your password contains `@`, replace it with `%40` (URL encoding)
 
+💡 **PostgreSQL extensions:** No extra extensions needed. Leave all extensions unchecked.
+   The bot uses SQLAlchemy which auto-creates tables on first run.
+
 ---
 
 ### 2️⃣ Create Telegram Bot
@@ -191,10 +194,21 @@ The script will:
    - **Type:** **Program**
    - **Command:** `/home/YOUR_USERNAME/amazon-affiliate-telegram-bot/.venv/bin/python main.py`
    - **Working directory:** `/home/YOUR_USERNAME/amazon-affiliate-telegram-bot`
-   - **Environment:** Leave default
-3. **Save** the service (it will start automatically)
+   - **Environment:** Add your env vars here (optional — can also use `.env` file):
+     ```
+     BOT_TOKEN=your_bot_token
+     TELEGRAM_API_ID=12345678
+     TELEGRAM_API_HASH=your_hash
+     ADMIN_TELEGRAM_ID=123456789
+     DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/dbname
+     LOG_LEVEL=INFO
+     ```
+3. Make sure **Paused** is **unchecked**
+4. **Save** the service (it will start automatically)
 
 **Check logs:** `Advanced → Services → affiliate-bot → Logs`
+
+**Restart service:** Go to Services → affiliate-bot → **Save** (without changing anything — it triggers a restart)
 
 ---
 
@@ -403,6 +417,51 @@ Check your `DATABASE_URL` in `.env`. If your password contains special character
 
 ### "⛔ Unauthorized" when sending commands
 Only the admin (configured in `ADMIN_TELEGRAM_ID`) can send commands. Check your `.env` file.
+
+---
+
+## 🔄 Logout & Re-Login
+
+If you need to disconnect and re-connect your Telegram account:
+
+### Step 1: Logout via Telegram
+Send `/logout` to the bot — it will disconnect the userbot and stop monitoring.
+
+### Step 2: Delete old session file (SSH)
+```bash
+cd ~/amazon-affiliate-telegram-bot
+rm -f userbot_session.session
+```
+
+### Step 3: Generate new session (SSH)
+```bash
+source .venv/bin/activate
+python scripts/generate_session.py
+```
+Enter the OTP code you receive on Telegram.
+
+### Step 4: Restart service
+**AlwaysData Admin** → **Advanced** → **Services** → **affiliate-bot** → **Save**
+
+✅ Bot will connect with the new session!
+
+---
+
+## ✅ Quick Setup Checklist
+
+Use this checklist after first-time setup:
+
+- [ ] **1. PostgreSQL DB created** → SQL → Add database
+- [ ] **2. Bot created** → @BotFather → /newbot
+- [ ] **3. API credentials** → my.telegram.org/apps
+- [ ] **4. Code cloned** → `git clone` on SSH
+- [ ] **5. Virtual env** → `python3 -m venv .venv`
+- [ ] **6. Dependencies** → `pip install -r requirements.txt`
+- [ ] **7. .env configured** → `cp .env.example .env && nano .env`
+- [ ] **8. Session generated** → `python scripts/generate_session.py`
+- [ ] **9. Service created** → Advanced → Services → Add
+- [ ] **10. Scheduled task** → Advanced → Scheduled Tasks → cleanup
+- [ ] **🔟 Telegram me `/status`** → Bot should show 🟢 connected
 
 ---
 
