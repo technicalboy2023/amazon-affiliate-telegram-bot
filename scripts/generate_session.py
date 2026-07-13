@@ -112,8 +112,8 @@ async def main() -> None:
             print(f"\n✅ Session file created: {session_file.resolve()}")
             print(f"   File size: {session_file.stat().st_size} bytes")
         else:
-            print(f"\n⚠️ Session file not found. Using in-memory session only.")
-            print(f"   Try running with: TelegramClient('userbot_session', ...)")
+            print("\n⚠️ Session file not found. Using in-memory session only.")
+            print("   Try running with: TelegramClient('userbot_session', ...)")
 
         print("\n" + "=" * 60)
         print("📋 NEXT STEPS:")

@@ -87,11 +87,11 @@ async def cmd_status(message: types.Message) -> None:
     
     # Real-time monitoring stats
     if cm and cm._last_forward_time > 0:
-        last_fwd = '{:.0f}s ago'.format(asyncio.get_running_loop().time() - cm._last_forward_time)
+        last_fwd = f'{asyncio.get_running_loop().time() - cm._last_forward_time:.0f}s ago'
     else:
         last_fwd = 'N/A'
     if cm and cm._last_message_received_time > 0:
-        last_msg = '{:.0f}s ago'.format(asyncio.get_running_loop().time() - cm._last_message_received_time)
+        last_msg = f'{asyncio.get_running_loop().time() - cm._last_message_received_time:.0f}s ago'
     else:
         last_msg = 'N/A'
     msgs_fwd = cm._messages_forwarded if cm else 0
