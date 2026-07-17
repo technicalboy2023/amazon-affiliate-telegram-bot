@@ -69,13 +69,18 @@ def build_affiliate_url(asin: str, tag: str, domain: str = "amazon.in") -> str:
     return f"https://www.{domain}/dp/{asin}?tag={tag}"
 
 def tag_non_asin_link(url: str, tag: str) -> str:
-    parsed = urlparse(url)
-    query_params = parse_qsl(parsed.query, keep_blank_values=True)
-    new_query = [(k, v) for k, v in query_params if k.lower() != 'tag']
-    new_query.append(('tag', tag))
-    new_query_str = urlencode(new_query)
-    new_parts = (parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query_str, parsed.fragment)
-    return urlunparse(new_parts)
+    """Replace or append affiliate tag in a non-ASIN Amazon URL.
+    
+    Uses regex instead of parse_qsl+urlencode to preserve the original
+    URL format exactly (prevents double-encoding of special chars like
+    colons and commas in Amazon's rh= filter parameter).
+    """
+    if re.search(r'[?&]tag=', url):
+        # Replace existing tag
+        return re.sub(r'([?&])tag=[^&]*', rf'\1tag={tag}', url)
+    # No tag exists — append it
+    separator = '&' if '?' in url else '?'
+    return f"{url}{separator}tag={tag}"
 
 async def process_amazon_links(text: str, affiliate_tag: str, default_domain: str = "amazon.in") -> tuple[str, list[str], bool]:
     """
