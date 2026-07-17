@@ -1,470 +1,107 @@
-# 🤖 Telegram Amazon Affiliate Bot
+# 🤖 Amazon Affiliate Telegram Bot (Lightweight Edition)
 
 Automatically forward Amazon product links from source Telegram channels to your destination channel, replacing them with your **affiliate links** in real-time.
 
-Works with any Amazon domain (`.in`, `.com`, etc.) and supports **media posts** (photos, videos, documents), **word replacements**, **blocked words**, **header/footer** customization, and **duplicate ASIN detection**.
+This project has been completely rebuilt to be extremely lightweight and stable. It uses **SQLite** and a single `asyncio` loop (`Telethon` + `python-telegram-bot`), making it perfect for Alwaysdata's 256MB free tier. No heavy PostgreSQL or Aiogram required!
 
 ---
 
 ## 📋 Features
 
-| Feature | Description |
-|---------|-------------|
-| 🔄 **Auto Forwarding** | Monitor multiple source channels, auto-forward with affiliate links |
-| 🔗 **Link Conversion** | Replace any Amazon URL with your affiliate tag |
-| 📸 **Media Support** | Handles photos, videos, GIFs, documents with captions |
-| ✂️ **Word Replacements** | Find-and-replace text (e.g., "Shop Now" → "Buy Now") |
-| 🚫 **Block Words** | Skip posts containing specific words |
-| 📝 **Header/Footer** | Prepend/append text to every forwarded post |
-| ⏱️ **Delay Control** | Set delay between forwards to avoid spam |
-| 🚦 **Pause/Resume** | Pause forwarding at any time, resume later |
-| 📊 **Real-Time Stats** | See messages received, forwarded, and last activity |
-| 🧹 **Auto Cleanup** | Scheduled cleanup of old DB rows (via AlwaysData Tasks) |
-| 🔐 **File-Based Session** | No complex OTP flow — generate session locally and upload |
-
----
-
-## 🏗️ Architecture
-
-```
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  Telegram Bot   │────▶│  Control Commands │────▶│  Settings/Stats │
-│  (Aiogram)      │     │  (/status, /help) │     │  (PostgreSQL)   │
-└─────────────────┘     └──────────────────┘     └─────────────────┘
-                                                         ▲
-┌─────────────────┐     ┌──────────────────┐            │
-│  Source Channel │────▶│  ChannelMonitor  │────────────┘
-│  (Telegram)     │     │  (Telethon)      │  Logs forwards
-└─────────────────┘     └──────────────────┘
-                               │
-                               ▼
-┌─────────────────┐     ┌──────────────────┐
-│  Link Engine    │────▶│  Destination     │
-│  (Amazon Aff.)  │     │  Channel         │
-└─────────────────┘     └──────────────────┘
-```
-
-### Components
-
-- **Bot (Aiogram)** — Handles all `/commands` from admin. Manages settings, shows stats.
-- **Userbot (Telethon)** — Logs in as your Telegram account to read source channels and post to destination.
-- **ChannelMonitor** — Listens to source channels in real-time, processes each message.
-- **Link Engine** — Detects Amazon URLs and replaces them with your affiliate links.
-- **PostCustomizer** — Applies word replacements, blocked words, header/footer.
-- **DuplicateChecker** — Prevents forwarding the same ASIN within the configured window (default: 1 hour).
-- **PostgreSQL** — Stores settings, stats, processed messages, and duplicate cache.
+- 🔄 **Auto Forwarding** — Monitor multiple source channels, auto-forward with affiliate links
+- 🔗 **Link Conversion** — Replace any Amazon URL (`amzn.to`, `amazon.in`, etc.) with your affiliate tag
+- 📸 **Media Support** — Handles photos, videos, GIFs, documents with captions
+- ✂️ **Word Replacements** — Find-and-replace text (e.g., "Shop Now" → "Buy Now")
+- 🚫 **Block Words** — Skip posts containing specific words
+- 📝 **Header/Footer** — Prepend/append text to every forwarded post
+- ⏱️ **Delay Control** — Set delay between forwards to avoid spam
+- 🚦 **Pause/Resume** — Pause forwarding at any time, resume later
+- 📊 **Real-Time Stats** — See messages received, forwarded, and skipped
+- 🛡️ **Duplicate Detection** — Automatically extracts the Amazon ASIN and prevents posting the same product twice within 1 hour. No spam!
 
 ---
 
 ## 🚀 Setup on Alwaysdata (Step by Step)
 
-### Prerequisites
-
-1. **AlwaysData account** — https://www.alwaysdata.com
-2. **Telegram Bot Token** — From [@BotFather](https://t.me/BotFather)
-3. **Telegram API Credentials** — From https://my.telegram.org/apps
-4. **SSH access** — Enable in AlwaysData Admin → Advanced → SSH
-
----
-
-### 1️⃣ Create PostgreSQL Database
-
-1. Go to **AlwaysData Admin** → **SQL** → **Add a database**
-2. Choose **PostgreSQL** (any version)
-3. Note the **database name**, **username**, and **password**
-4. Your database URL will be:
-   ```
-   postgresql+asyncpg://USER:PASSWORD@postgresql-YOUR_ACCOUNT.alwaysdata.net:5432/DB_NAME
-   ```
-   ⚠️ **Important:** If your password contains `@`, replace it with `%40` (URL encoding)
-
-💡 **PostgreSQL extensions:** No extra extensions needed. Leave all extensions unchecked.
-   The bot uses SQLAlchemy which auto-creates tables on first run.
-
----
-
-### 2️⃣ Create Telegram Bot
-
-1. Open [@BotFather](https://t.me/BotFather) on Telegram
-2. Send `/newbot` and follow instructions
-3. Save the **bot token** (looks like `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`)
-
----
-
-### 3️⃣ Get API Credentials
-
-1. Go to https://my.telegram.org/apps
-2. Log in with your Telegram account
-3. Create a new app if you don't have one
-4. Note your **API ID** and **API Hash**
-
----
-
-### 4️⃣ SSH into AlwaysData
+### 1️⃣ SSH into AlwaysData
 
 ```bash
 ssh YOUR_USERNAME@ssh-YOUR_ACCOUNT.alwaysdata.net
-# Example:
-ssh achal@ssh-achal.alwaysdata.net
 ```
 
----
-
-### 5️⃣ Clone Repository
+### 2️⃣ Clone Repository
 
 ```bash
 cd ~
-git clone https://github.com/technicalboy2023/amazon-affiliate-telegram-bot.git
-cd amazon-affiliate-telegram-bot
+git clone https://github.com/technicalboy2023/amazon-affiliate-telegram-bot.git bot
+cd bot
 ```
 
----
-
-### 6️⃣ Create Virtual Environment & Install
+### 3️⃣ Create Virtual Environment & Install
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
----
+### 4️⃣ Configure `config.json`
 
-### 7️⃣ Configure .env
-
+Create the configuration file:
 ```bash
-cp .env.example .env
-nano .env
+cp config.example.json config.json
+nano config.json
 ```
+Fill in your credentials:
+- `bot_token`: Your admin bot token from [@BotFather](https://t.me/BotFather)
+- `api_id` / `api_hash`: Your credentials from [my.telegram.org](https://my.telegram.org)
+- `admin_id`: Your personal Telegram User ID (get it from [@userinfobot](https://t.me/userinfobot))
 
-Fill in your real values:
-```ini
-BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
-TELEGRAM_API_ID=12345678
-TELEGRAM_API_HASH=your_api_hash_here
-TELEGRAM_PHONE=+911234567890
-ADMIN_TELEGRAM_ID=123456789     # Your Telegram user ID
-DATABASE_URL=postgresql+asyncpg://user:password@postgresql-your_account.alwaysdata.net:5432/db_name
-DEFAULT_AFFILIATE_TAG=yourtag-21
-DEFAULT_AMAZON_DOMAIN=amazon.in
-LOG_LEVEL=INFO
-```
+### 5️⃣ Login (Generate Session)
 
-**How to get your Telegram User ID:** Send a message to [@userinfobot](https://t.me/userinfobot) on Telegram.
-
-**URL encoding for passwords:** If your DB password contains special characters, encode them:
-- `@` → `%40`
-- `#` → `%23`
-- `!` → `%21`
-- `$` → `%24`
-
-Example: `Aman@4899` → `Aman%404899`
-
----
-
-### 8️⃣ Generate Session File (via SSH)
-
-Run the session generator **directly on the server** via SSH. No need for local machine.
-
+Run the interactive login script directly on the server:
 ```bash
-cd ~/amazon-affiliate-telegram-bot
-source .venv/bin/activate
-python scripts/generate_session.py
+python3 login.py
 ```
+1. Enter your phone number (e.g. `+919876543210`)
+2. Enter the OTP code Telegram sends you.
+3. This creates a `userbot.session` file locally. No complex `.env` needed!
 
-The script will:
-1. Auto-read API ID, Hash, Phone from your `.env` file
-2. Send an OTP to your Telegram app
-3. Create `userbot_session.session` directly in the project folder
-4. You're done — no upload needed!
-
-⚠️ Keep the SSH session open while entering the OTP code you receive on Telegram.
-
-> The session file is generated on the server itself. If Telegram blocks the OTP
-> (unlikely from alwaysdata), you can run the same script on any machine and
-> copy the `.session` file to the server.
-
----
-
-### 9️⃣ Create AlwaysData Service
+### 6️⃣ Create AlwaysData Service
 
 1. Go to **AlwaysData Admin** → **Advanced** → **Services** → **Add a service**
 2. Configure:
-   - **Name:** `affiliate-bot`
+   - **Name:** `amazon-bot`
    - **Type:** **Program**
-   - **Command:** `/home/YOUR_USERNAME/amazon-affiliate-telegram-bot/.venv/bin/python main.py`
-   - **Working directory:** `/home/YOUR_USERNAME/amazon-affiliate-telegram-bot`
-   - **Environment:** Add your env vars here (optional — can also use `.env` file):
-     ```
-     BOT_TOKEN=your_bot_token
-     TELEGRAM_API_ID=12345678
-     TELEGRAM_API_HASH=your_hash
-     ADMIN_TELEGRAM_ID=123456789
-     DATABASE_URL=postgresql+asyncpg://user:pass@host:5432/dbname
-     LOG_LEVEL=INFO
-     ```
-3. Make sure **Paused** is **unchecked**
-4. **Save** the service (it will start automatically)
+   - **Command:** `/home/YOUR_USERNAME/bot/venv/bin/python3 bot.py`
+   - **Working directory:** `/home/YOUR_USERNAME/bot`
+3. Make sure **Paused** is **unchecked**.
+4. **Save** the service (it will start automatically).
 
-**Check logs:** `Advanced → Services → affiliate-bot → Logs`
-
-**Restart service:** Go to Services → affiliate-bot → **Save** (without changing anything — it triggers a restart)
+Check logs at: `Advanced → Services → amazon-bot → Logs`
 
 ---
 
-### 🔟 Verify Bot is Running
+## 🎮 How to Use (Admin Commands)
 
-On Telegram, open your bot and send:
-```
-/start
-/status
-```
+Send `/start` to your bot on Telegram. You must be the admin!
 
-You should see:
-```
-Userbot: 🟢 connected
-Monitoring: 🟢 active
-```
+**Amazon Affiliate Settings:**
+- `/set_tag <tag>` — Set your Amazon affiliate tag (e.g. `my_tag-21`)
+- `/clear_tag` — Remove your affiliate tag
+- `/set_domain <domain>` — Set default amazon domain (e.g. `amazon.in`)
 
----
+**Routing Posts:**
+- `/add_source <@username/ID>` — Monitor a new channel
+- `/set_dest <@username/ID>` — Set the global destination channel
 
-### 🔁 Updating the Bot
-
-```bash
-ssh YOUR_USERNAME@ssh-YOUR_ACCOUNT.alwaysdata.net
-cd ~/amazon-affiliate-telegram-bot
-git pull
-source .venv/bin/activate
-pip install -r requirements.txt --quiet
-# Then restart: AlwaysData Admin → Advanced → Services → affiliate-bot → Save
-```
+*Type `/help` in the bot to see all commands for adding word replacements, blocking words, and viewing stats!*
 
 ---
 
-### 🧹 Auto Cleanup (Database)
+## 🧹 Database Cleanup (Optional)
 
-Set up a **Scheduled Task** to clean old database rows:
+The bot stores duplicate ASINs for 1 hour. You can set up an Alwaysdata Scheduled Task to prune the database logs to save space.
 
-1. **AlwaysData Admin** → **Advanced** → **Scheduled Tasks** → **Add**
-2. Configure:
-   - **Command:** `cd /home/YOUR_USERNAME/amazon-affiliate-telegram-bot && .venv/bin/python scripts/cleanup.py`
-   - **Schedule:** `0 0 */7 * *` (every 7 days at midnight)
-
-This keeps `processed_messages`, `duplicate_cache`, and `daily_stats` tables clean (retains 3 days of data).
-
----
-
-## 📖 Bot Commands
-
-### 📋 Info
-| Command | Description |
-|---------|-------------|
-| `/start` | Welcome message |
-| `/help` | Show all commands |
-| `/status` | Current status with real-time stats |
-| `/config` | View all runtime settings |
-| `/stats` | Today's statistics |
-| `/history` | Recent forwarded messages |
-| `/errors` | Recent errors |
-| `/ping` | Health check |
-
-### ⚙️ Control
-| Command | Description |
-|---------|-------------|
-| `/pause` | Pause forwarding |
-| `/stop` | Stop monitoring |
-| `/resume` | Resume forwarding |
-| `/reload` | Restart monitor with updated settings |
-| `/logout` | Disconnect userbot |
-
-### 🔗 Affiliate
-| Command | Description |
-|---------|-------------|
-| `/affiliate <tag>` | Set affiliate tag |
-| `/clear_affiliate` | Clear affiliate tag |
-| `/sources` | List source channels |
-| `/add_source <channel>` | Add source channel |
-| `/remove_source <channel>` | Remove source channel |
-| `/dest <channel>` | Set destination channel |
-| `/remove_dest` | Clear destination channel |
-| `/domain <domain>` | Set Amazon domain (`amazon.in` / `amazon.com`) |
-| `/set_delay <sec>` | Set delay between forwards |
-
-### ✂️ Customization
-| Command | Description |
-|---------|-------------|
-| `/add_replace Old➜New` | Add word replacement |
-| `/remove_replace Old` | Remove replacement |
-| `/list_replaces` | View all replacements |
-| `/add_block Word` | Block posts containing word |
-| `/remove_block Word` | Remove block rule |
-| `/list_blocks` | View all block rules |
-| `/set_header Text` | Add header to posts |
-| `/set_footer Text` | Add footer to posts |
-| `/clear_header` | Remove header |
-| `/clear_footer` | Remove footer |
-
-### 🔐 Auth
-| Command | Description |
-|---------|-------------|
-| `/login` | Show session setup instructions |
-
----
-
-## 📁 Project Structure
-
-```
-├── config/
-│   └── settings.py          # App configuration (pydantic-settings)
-├── core/
-│   └── container.py         # DI container (all services)
-├── database/
-│   ├── engine.py            # SQLAlchemy async engine
-│   ├── models/              # ORM models
-│   │   ├── user.py
-│   │   ├── message.py
-│   │   ├── channel.py
-│   │   ├── pipeline.py
-│   │   ├── telegram_account.py
-│   │   ├── stats.py
-│   │   ├── duplicate.py
-│   │   ├── settings.py
-│   │   └── affiliate.py
-│   └── repositories/
-│       ├── base.py
-│       └── message_repo.py
-├── services/
-│   ├── message_processor.py # Process text through link engine
-│   ├── message_publisher.py # Send message to destination
-│   ├── duplicate_checker.py # ASIN duplicate detection
-│   ├── post_customizer.py   # Word replacements, header/footer
-│   ├── settings_service.py  # Runtime settings (DB-backed)
-│   ├── stats_service.py     # Daily statistics
-│   ├── user_service.py      # User/pipeline management
-│   └── link_engine/         # Amazon affiliate link conversion
-├── telegram/
-│   ├── bot/handlers/
-│   │   ├── start.py         # All bot commands
-│   │   └── login.py         # Session setup instructions
-│   └── userbot/
-│       ├── client.py        # Telethon client with watchdog
-│       └── handlers/
-│           └── monitor.py   # Real-time channel monitor
-├── scripts/
-│   ├── generate_session.py  # Local session file generator
-│   └── cleanup.py           # DB cleanup (Scheduled Tasks)
-├── tests/
-│   ├── test_settings.py
-│   └── test_link_engine_providers.py
-├── main.py                  # Entry point
-├── .env.example             # Environment template
-├── requirements.txt         # Python dependencies
-└── pyproject.toml           # Ruff config
-```
-
----
-
-## 🛠️ Development
-
-### Install dependencies
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-### Run tests
-```bash
-source .venv/bin/activate
-pytest tests/ -v
-```
-
-### Lint
-```bash
-source .venv/bin/activate
-ruff check .
-```
-
-### Environment variables
-Copy `.env.example` to `.env` and fill in your values:
-```bash
-cp .env.example .env
-```
-
----
-
-## ⚠️ Troubleshooting
-
-### Bot won't start — "No saved session file found"
-SSH into the server, activate the venv, and run `python scripts/generate_session.py` directly:
-```bash
-cd ~/amazon-affiliate-telegram-bot
-source .venv/bin/activate
-python scripts/generate_session.py
-```
-Then restart the service (Advanced → Services → affiliate-bot → Save).
-
-### Database connection failed — "FATAL: password authentication failed"
-Check your `DATABASE_URL` in `.env`. If your password contains special characters like `@`, `#`, or `!`, they must be **URL-encoded**:
-- `@` → `%40`
-- `#` → `%23`
-- `!` → `%21`
-
-### Forwarding not working — "/status" shows "stopped"
-1. Make sure source and destination channels are configured: `/sources` and `/dest`
-2. Run `/reload` to apply changes
-3. Check service logs in AlwaysData Admin
-
-### "⛔ Unauthorized" when sending commands
-Only the admin (configured in `ADMIN_TELEGRAM_ID`) can send commands. Check your `.env` file.
-
----
-
-## 🔄 Logout & Re-Login
-
-If you need to disconnect and re-connect your Telegram account:
-
-### Step 1: Logout via Telegram
-Send `/logout` to the bot — it will disconnect the userbot and stop monitoring.
-
-### Step 2: Delete old session file (SSH)
-```bash
-cd ~/amazon-affiliate-telegram-bot
-rm -f userbot_session.session
-```
-
-### Step 3: Generate new session (SSH)
-```bash
-source .venv/bin/activate
-python scripts/generate_session.py
-```
-Enter the OTP code you receive on Telegram.
-
-### Step 4: Restart service
-**AlwaysData Admin** → **Advanced** → **Services** → **affiliate-bot** → **Save**
-
-✅ Bot will connect with the new session!
-
----
-
-## ✅ Quick Setup Checklist
-
-Use this checklist after first-time setup:
-
-- [ ] **1. PostgreSQL DB created** → SQL → Add database
-- [ ] **2. Bot created** → @BotFather → /newbot
-- [ ] **3. API credentials** → my.telegram.org/apps
-- [ ] **4. Code cloned** → `git clone` on SSH
-- [ ] **5. Virtual env** → `python3 -m venv .venv`
-- [ ] **6. Dependencies** → `pip install -r requirements.txt`
-- [ ] **7. .env configured** → `cp .env.example .env && nano .env`
-- [ ] **8. Session generated** → `python scripts/generate_session.py`
-- [ ] **9. Service created** → Advanced → Services → Add
-- [ ] **10. Scheduled task** → Advanced → Scheduled Tasks → cleanup
-- [ ] **🔟 Telegram me `/status`** → Bot should show 🟢 connected
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License.
+- **Command:** `cd /home/YOUR_USERNAME/bot && venv/bin/python3 test_cleanup.py`
+- **Schedule:** `@daily`
