@@ -68,20 +68,30 @@ def build_affiliate_url(asin: str, tag: str, domain: str = "amazon.in") -> str:
         domain = "amazon.in"
     return f"https://www.{domain}/dp/{asin}?tag={tag}"
 
-async def process_amazon_links(text: str, affiliate_tag: str, default_domain: str = "amazon.in") -> tuple[str, list[str]]:
+def tag_non_asin_link(url: str, tag: str) -> str:
+    parsed = urlparse(url)
+    query_params = parse_qsl(parsed.query, keep_blank_values=True)
+    new_query = [(k, v) for k, v in query_params if k.lower() != 'tag']
+    new_query.append(('tag', tag))
+    new_query_str = urlencode(new_query)
+    new_parts = (parsed.scheme, parsed.netloc, parsed.path, parsed.params, new_query_str, parsed.fragment)
+    return urlunparse(new_parts)
+
+async def process_amazon_links(text: str, affiliate_tag: str, default_domain: str = "amazon.in") -> tuple[str, list[str], bool]:
     """
-    Find all amazon links, resolve them, extract ASINs, and replace them with affiliate links.
-    Returns (new_text, list_of_asins).
+    Find all amazon links, resolve them, extract ASINs (if product), and replace them with affiliate links.
+    Returns (new_text, list_of_asins, has_amazon_link).
     """
     if not text or not affiliate_tag:
-        return text, []
+        return text, [], False
         
     urls = URL_RE.findall(text)
     if not urls:
-        return text, []
+        return text, [], False
 
     new_text = text
     found_asins = []
+    has_amazon_link = False
 
     for url in urls:
         try:
@@ -98,12 +108,15 @@ async def process_amazon_links(text: str, affiliate_tag: str, default_domain: st
                 is_amazon = True
                 
             if is_amazon:
+                has_amazon_link = True
                 asin = extract_asin(final_url)
                 if asin:
                     found_asins.append(asin)
                     new_url = build_affiliate_url(asin, affiliate_tag, default_domain)
-                    new_text = new_text.replace(url, new_url)
+                else:
+                    new_url = tag_non_asin_link(final_url, affiliate_tag)
+                new_text = new_text.replace(url, new_url)
         except Exception as e:
             logger.error("Error processing link %s: %s", url, e)
             
-    return new_text, found_asins
+    return new_text, found_asins, has_amazon_link

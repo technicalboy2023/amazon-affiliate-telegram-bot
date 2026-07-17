@@ -263,7 +263,7 @@ class UserbotEngine:
         amazon_domain = self.db.get_amazon_domain()
 
         # 3. Customizer (Block check, word replace, affiliate rewrite, header/footer)
-        customized_text, found_asins = await self.customizer.process(
+        customized_text, found_asins, has_amazon_link = await self.customizer.process(
             raw_text, affiliate_tag, amazon_domain
         )
         
@@ -277,9 +277,9 @@ class UserbotEngine:
             self.db.log_forward(source_db_id, raw_text, status="blocked")
             return
 
-        if not found_asins:
+        if not has_amazon_link:
             logger.info(
-                "Post skipped (src=%s, msg=%d): No Amazon ASINs found (not an Amazon deal).",
+                "Post skipped (src=%s, msg=%d): No Amazon links found (not an Amazon deal).",
                 source_title,
                 message.id,
             )

@@ -131,34 +131,35 @@ class PostCustomizer:
         text = re.sub(r"\n{3,}", "\n\n", text)
         return text.strip()
 
-    async def apply_affiliate_links(self, text: str, tag: str, domain: str) -> tuple[str, list[str]]:
+    async def apply_affiliate_links(self, text: str, tag: str, domain: str) -> tuple[str, list[str], bool]:
         from userbot.link_engine import process_amazon_links
         return await process_amazon_links(text, tag, domain)
 
-    async def process(self, text: str, affiliate_tag: str = "", amazon_domain: str = "amazon.in") -> tuple[Optional[str], list[str]]:
+    async def process(self, text: str, affiliate_tag: str = "", amazon_domain: str = "amazon.in") -> tuple[Optional[str], list[str], bool]:
         """
         Run the full customization pipeline.
 
         Returns:
-            (Customized text string, list_of_found_asins)
-            or (None, []) if the post should be blocked.
+            (Customized text string, list_of_found_asins, has_amazon_link)
+            or (None, [], False) if the post should be blocked.
         """
         if not text:
-            return None, []
+            return None, [], False
 
         # 1. Block check
         blocked, word = self.should_block(text)
         if blocked:
             logger.info("Post rejected — blocked word '%s' found.", word)
-            return None, []
+            return None, [], False
 
         # 2. Word replacements
         text = self.apply_replacements(text)
         
         # 3. Affiliate links
         found_asins = []
+        has_amazon_link = False
         if affiliate_tag:
-            text, found_asins = await self.apply_affiliate_links(text, affiliate_tag, amazon_domain)
+            text, found_asins, has_amazon_link = await self.apply_affiliate_links(text, affiliate_tag, amazon_domain)
 
         # 4. Header
         text = self.apply_header(text)
@@ -169,13 +170,13 @@ class PostCustomizer:
         # 6. Whitespace cleanup
         text = self.clean_whitespace(text)
 
-        return text, found_asins
+        return text, found_asins, has_amazon_link
 
-    async def process_caption(self, caption: Optional[str], affiliate_tag: str = "", amazon_domain: str = "amazon.in") -> tuple[Optional[str], list[str]]:
+    async def process_caption(self, caption: Optional[str], affiliate_tag: str = "", amazon_domain: str = "amazon.in") -> tuple[Optional[str], list[str], bool]:
         """
         Process a media caption through the same pipeline.
         Same as process() but handles None gracefully.
         """
         if caption is None:
-            return None, []
+            return None, [], False
         return await self.process(caption, affiliate_tag, amazon_domain)
