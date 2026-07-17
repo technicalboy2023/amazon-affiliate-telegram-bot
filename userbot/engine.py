@@ -277,6 +277,16 @@ class UserbotEngine:
             self.db.log_forward(source_db_id, raw_text, status="blocked")
             return
 
+        if not found_asins:
+            logger.info(
+                "Post skipped (src=%s, msg=%d): No Amazon ASINs found (not an Amazon deal).",
+                source_title,
+                message.id,
+            )
+            self.db.increment_stat("total_skipped")
+            self.db.log_forward(source_db_id, raw_text, status="skipped_no_amazon")
+            return
+
         # 4. Check Cross-Source Dedup (1-Hour Window)
         # If ASINs found, dedup by ASIN. Otherwise dedup by full text.
         is_duplicate = False

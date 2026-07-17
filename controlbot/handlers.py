@@ -497,6 +497,12 @@ async def set_domain(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         await update.message.reply_text("⚠️ Usage: /set_domain <amazon.in|amazon.com|etc>")
         return
     domain = context.args[0].strip()
+    import re
+    domain = re.sub(r"^https?://", "", domain)
+    domain = re.sub(r"^www\.", "", domain)
+    domain = domain.strip("/")
+    if not domain:
+        domain = "amazon.in"
     db: Database = context.bot_data["db"]
     db.set_amazon_domain(domain)
     await update.message.reply_text(

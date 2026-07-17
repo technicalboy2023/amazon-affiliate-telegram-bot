@@ -60,6 +60,12 @@ def extract_asin(url: str) -> str | None:
     return None
 
 def build_affiliate_url(asin: str, tag: str, domain: str = "amazon.in") -> str:
+    # Clean up domain to prevent malformed URLs if user mistakenly set http:// or www.
+    domain = re.sub(r"^https?://", "", domain)
+    domain = re.sub(r"^www\.", "", domain)
+    domain = domain.strip("/")
+    if not domain:
+        domain = "amazon.in"
     return f"https://www.{domain}/dp/{asin}?tag={tag}"
 
 async def process_amazon_links(text: str, affiliate_tag: str, default_domain: str = "amazon.in") -> tuple[str, list[str]]:
