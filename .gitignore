@@ -1,14 +1,30 @@
+# Environment Variables & Configs
 .env
+config.json
+
+# Telegram session files (contains login credentials!)
+*.session
+*.session-journal
+
+# Database files
+bot_data.db
+bot_data.db-journal
+bot_data.db-shm
+bot_data.db-wal
+data/
+
+# Logs
 bot.log
+*.log
+
+# Python cache and environments
 __pycache__/
 *.pyc
+*.pyo
+venv/
 .venv/
 .pytest_cache/
 .ruff_cache/
-data/
-
-# Telegram session file (contains login credentials!)
-*.session
 
 # Editor / OS
 .vscode/
